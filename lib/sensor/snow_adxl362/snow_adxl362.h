@@ -1,3 +1,13 @@
+/*
+ * Driver library for the adxl362 accelerometer 
+ * Snowstorm project
+ * Author: Philipp Kirsch
+ *
+ */ 
+
+
+
+
 #ifndef SNOW_ADXL362_H
 #define SNOW_ADXL362_H
 
@@ -11,6 +21,7 @@
 
 
 typedef uint8_t snow_adxl362_ret_code_t;
+typedef uint8_t snow_adxl362_self_test_t;
 typedef snow_adxl362_ret_code_t (*snow_adxl362_spi_transfer_t)(uint8_t* tx_buf, uint8_t tx_len, uint8_t* rx_buf, uint8_t rx_len);
 
 
@@ -63,7 +74,11 @@ snow_adxl362_ret_code_t nrf_spi_transfer(uint8_t* tx_buf, uint8_t tx_len, uint8_
 snow_adxl362_ret_code_t snow_adxl362_init(nrf_drv_spi_t* spi_instance, snow_adxl362_spi_transfer_t spi_transfer_func_ptr);
 snow_adxl362_ret_code_t snow_adxl362_configure(snow_adxl362_config_t* cfg, bool check_config);
 snow_adxl362_ret_code_t snow_adxl362_read_accl(snow_accl_xyz_t* accl);
+snow_adxl362_ret_code_t snow_adxl362_read_temp(float* temp);
+snow_adxl362_ret_code_t snow_adxl362_read_config(snow_adxl362_config_t* cfg);
 snow_adxl362_ret_code_t snow_adxl362_soft_reset(bool wait_recommended);
+snow_adxl362_ret_code_t snow_adxl362_perform_self_test(snow_adxl362_self_test_t* result, uint8_t samples);
+snow_adxl362_ret_code_t snow_adxl362_write_reg(uint8_t reg_addr, uint8_t reg_val);
 
 
 

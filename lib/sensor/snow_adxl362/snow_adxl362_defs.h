@@ -16,6 +16,9 @@
 // Device Status
 #define SNOW_ADXL362_REG_STATUS                 0x0B
 
+// Self Test 
+#define SNOW_ADXL362_REG_SELF_TEST              0x2E
+
 // Accelerometer Data
 #define SNOW_ADXL362_REG_X_LSB                  0x0E
 #define SNOW_ADXL362_REG_X_MSB                  0x0F
@@ -179,5 +182,9 @@
 #define SNOW_ADXL362_SCALE_FACTOR_2G        0.001f
 #define SNOW_ADXL362_SCALE_FACTOR_4G        0.002f
 #define SNOW_ADXL362_SCALE_FACTOR_8G        0.0043f
+
+#define SNOW_ADXL362_SELF_TEST_X_OK         0x01
+#define SNOW_ADXL362_SELF_TEST_Y_OK         0x02
+#define SNOW_ADXL362_SELF_TEST_Z_OK         0x04
 
 #endif
