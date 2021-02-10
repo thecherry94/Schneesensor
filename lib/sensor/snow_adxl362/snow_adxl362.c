@@ -1,5 +1,5 @@
 #include "snow_adxl362.h"
-
+#include <stdio.h>
 
 
 nrf_drv_spi_t*                m_spi;
@@ -21,14 +21,75 @@ snow_adxl362_ret_code_t snow_adxl362_init(nrf_drv_spi_t* spi_instance, snow_adxl
 
     // Perform a read of some constant registers set by the manufacturer as a test
     //
+    uint8_t tx_buf[] = { SNOW_ADXL362_READ, SNOW_ADXL362_REG_DEVICE_ID };
+    uint8_t rx_buf[6] = {0};
 
+    snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf, sizeof(tx_buf), rx_buf, sizeof(rx_buf), SNOW_ADXL362_CS_PIN);
+    
+    m_initialized = err_code == SNOW_ADXL362_OK;
 
+    return err_code;
 }
 
 
+// This function configures the entire configurable sensor registers
+//
+snow_adxl362_ret_code_t snow_adxl362_configure(snow_adxl362_config_t* cfg, bool check_config) {
+    if (!m_initialized)
+        return SNOW_ADXL362_NOT_INITIALIZED_ERROR;
 
-snow_adxl362_ret_code_t snow_adxl362_configure(snow_adxl362_config_t* cfg) {
+    // Feed values into the transfer buffer
+    //
+    uint8_t tx_buf_write_cfg[] = {
+        SNOW_ADXL362_WRITE,
+        SNOW_ADXL362_REG_THRESH_ACT_LSB,
+
+        cfg->threshold_active & 0x0F,
+        (cfg->threshold_active >> 8) & 0x07,
+
+        cfg->time_active,
+
+        cfg->threshold_inactive & 0x0F,
+        (cfg->threshold_inactive >> 8) & 0x07,
+
+        cfg->time_inactive & 0x0F,
+        cfg->time_inactive & 0xF0,
+
+        cfg->activity_control,
+
+        cfg->fifo_control,
+
+        cfg->intmap1,
+        cfg->intmap2,
+
+        cfg->filter_control,
+
+        cfg->power_control
+    };
+
+    snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf_write_cfg, SNOW_ADXL362_CFG_BUF_SIZE, NULL, 0);
+
+    if (err_code != SNOW_ADXL362_OK)
+        return err_code;
     
+    if (check_config) {
+        uint8_t tx_buf_read_cfg[] = {
+            SNOW_ADXL362_READ,
+            SNOW_ADXL362_REG_THRESH_ACT_LSB
+        };
+      
+        uint8_t rx_buf_read_cfg[SNOW_ADXL362_CFG_BUF_SIZE] = {0};
+        
+        snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf_read_cfg, 2, rx_buf_read_cfg, SNOW_ADXL362_CFG_BUF_SIZE);
+
+        if (err_code != SNOW_ADXL362_OK)
+            return err_code;
+        
+        if (memcmp(tx_buf_write_cfg, rx_buf_read_cfg, SNOW_ADXL362_CFG_BUF_SIZE) != 0) 
+            return SNOW_ADXL362_CONFIGURATION_ERROR;
+    }
+
+    return SNOW_ADXL362_OK;
 }
 
 
