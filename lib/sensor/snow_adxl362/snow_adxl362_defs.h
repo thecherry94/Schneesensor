@@ -148,6 +148,18 @@
 #define SNOW_ADXL362_VAL_ACT_LL_LOOP            0x30
 
 
+// Fifo Control Register
+#define SNOW_ADXL362_VAL_FIFO_DISABLED          0x00
+#define SNOW_ADXL362_VAL_FIFO_OLDEST            0x01
+#define SNOW_ADXL362_VAL_FIFO_STREAM            0x02
+#define SNOW_ADXL362_VAL_FIFO_TRIGGERED         0x03
+
+#define SNOW_ADXL362_VAL_FIFO_TEMP_OFF          0x00
+#define SNOW_ADXL362_VAL_FIFO_TEMP_ON           0x04
+#define SNOW_ADXL362_VAL_FIFO_ABOVE_HALF_OFF    0x00
+#define SNOW_ADXL362_VAL_FIFO_ABOVE_HALF_ON     0x08
+
+
 
 
 // Status messages/Errors/Warnings
@@ -162,7 +174,10 @@
 
 // Misc
 #define SNOW_ADXL362_CS_PIN       23
-#define SNOW_ADXL362_CFG_BUF_SIZE 15
+#define SNOW_ADXL362_CFG_BUF_SIZE 16
 
+#define SNOW_ADXL362_SCALE_FACTOR_2G        0.001f
+#define SNOW_ADXL362_SCALE_FACTOR_4G        0.002f
+#define SNOW_ADXL362_SCALE_FACTOR_8G        0.0043f
 
 #endif
