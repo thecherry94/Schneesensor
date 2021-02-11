@@ -6,10 +6,6 @@
 
 nrf_drv_spi_t*                m_spi;
 snow_adxl362_spi_transfer_t   m_spi_transfer_func;
-uint8_t                       m_last_command;
-bool                          m_initialized = false;
-float                         m_scale_factor = 0.001f;
-snow_adxl362_config_t         m_cfg;
 
 
 
@@ -19,9 +15,12 @@ bool inRange(float low, float high, float x)
 } 
 
 
-snow_adxl362_ret_code_t snow_adxl362_init(nrf_drv_spi_t* spi_instance, snow_adxl362_spi_transfer_t spi_transfer_func_ptr) {
+snow_adxl362_ret_code_t snow_adxl362_init(snow_adxl362_device* adxl_device, nrf_drv_spi_t* spi_instance, snow_adxl362_spi_transfer_t spi_transfer_func_ptr) {
     if (spi_instance == NULL || spi_transfer_func_ptr == NULL)
         return SNOW_ADXL362_NULLPTR_ERROR;
+
+    nrf_gpio_cfg_output(adxl_device->cs_pin);
+    nrf_gpio_pin_set(adxl_device->cs_pin);
     
     m_spi = spi_instance;
     m_spi_transfer_func = spi_transfer_func_ptr;
@@ -31,9 +30,9 @@ snow_adxl362_ret_code_t snow_adxl362_init(nrf_drv_spi_t* spi_instance, snow_adxl
     uint8_t tx_buf[] = { SNOW_ADXL362_READ, SNOW_ADXL362_REG_DEVICE_ID };
     uint8_t rx_buf[6] = {0};
 
-    snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf, sizeof(tx_buf), rx_buf, sizeof(rx_buf));
+    snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf, sizeof(tx_buf), rx_buf, sizeof(rx_buf), adxl_device->cs_pin);
     
-    m_initialized = err_code == SNOW_ADXL362_OK;
+    adxl_device->initialized = err_code == SNOW_ADXL362_OK;
 
     return err_code;
 }
@@ -41,9 +40,11 @@ snow_adxl362_ret_code_t snow_adxl362_init(nrf_drv_spi_t* spi_instance, snow_adxl
 
 // This function configures the entire configurable sensor registers
 //
-snow_adxl362_ret_code_t snow_adxl362_configure(snow_adxl362_config_t* cfg, bool check_config) {
-    if (!m_initialized)
+snow_adxl362_ret_code_t snow_adxl362_configure(snow_adxl362_device* adxl_device, bool check_config) {
+    if (!adxl_device->initialized)
         return SNOW_ADXL362_NOT_INITIALIZED_ERROR;
+
+    snow_adxl362_config_t* cfg = &adxl_device->cfg;
 
     // Feed values into the transfer buffer with a burst write
     //
@@ -76,7 +77,7 @@ snow_adxl362_ret_code_t snow_adxl362_configure(snow_adxl362_config_t* cfg, bool 
     };
 
     // Transfer configuration to sensor
-    snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf_write_cfg, SNOW_ADXL362_CFG_BUF_SIZE, NULL, 0);
+    snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf_write_cfg, SNOW_ADXL362_CFG_BUF_SIZE, NULL, 0, adxl_device->cs_pin);
 
     // Check SPI status
     if (err_code != SNOW_ADXL362_OK)
@@ -94,7 +95,7 @@ snow_adxl362_ret_code_t snow_adxl362_configure(snow_adxl362_config_t* cfg, bool 
         uint8_t rx_buf_read_cfg[SNOW_ADXL362_CFG_BUF_SIZE] = {0};
         
         // Read configuration from sensor
-        snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf_read_cfg, 2, rx_buf_read_cfg, SNOW_ADXL362_CFG_BUF_SIZE);
+        snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf_read_cfg, 2, rx_buf_read_cfg, SNOW_ADXL362_CFG_BUF_SIZE, adxl_device->cs_pin);
 
         // Check SPI status
         if (err_code != SNOW_ADXL362_OK)
@@ -108,26 +109,24 @@ snow_adxl362_ret_code_t snow_adxl362_configure(snow_adxl362_config_t* cfg, bool 
     // Apply g-force value scale factor according to sensitivity settings
     switch(cfg->filter_control & 0x120) {
         case SNOW_ADXL362_VAL_FILTER_SENS_2G:
-            m_scale_factor = SNOW_ADXL362_SCALE_FACTOR_2G;
+            adxl_device->scale_factor = SNOW_ADXL362_SCALE_FACTOR_2G;
             break;
         
         case SNOW_ADXL362_VAL_FILTER_SENS_4G:
-            m_scale_factor = SNOW_ADXL362_SCALE_FACTOR_4G;
+            adxl_device->scale_factor = SNOW_ADXL362_SCALE_FACTOR_4G;
             break;
         
         case SNOW_ADXL362_VAL_FILTER_SENS_8G:
-            m_scale_factor = SNOW_ADXL362_SCALE_FACTOR_8G;
+            adxl_device->scale_factor = SNOW_ADXL362_SCALE_FACTOR_8G;
             break;
     }
-
-    m_cfg = *cfg;
 
     // Everything OK
     return SNOW_ADXL362_OK;
 }
 
 
-snow_adxl362_ret_code_t snow_adxl362_read_config(snow_adxl362_config_t* cfg) {
+snow_adxl362_ret_code_t snow_adxl362_read_config(snow_adxl362_device* adxl_device, snow_adxl362_config_t* cfg) {
     // Begin read from first configuration register and perform a burst read
     uint8_t tx_buf[] = {
         SNOW_ADXL362_READ,
@@ -138,7 +137,7 @@ snow_adxl362_ret_code_t snow_adxl362_read_config(snow_adxl362_config_t* cfg) {
     uint8_t rx_buf[SNOW_ADXL362_CFG_BUF_SIZE] = {0};
     
     // Read configuration from sensor
-    snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf, 2, rx_buf, SNOW_ADXL362_CFG_BUF_SIZE);
+    snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf, 2, rx_buf, SNOW_ADXL362_CFG_BUF_SIZE, adxl_device->cs_pin);
 
     // Check SPI status
     if (err_code != SNOW_ADXL362_OK)
@@ -164,7 +163,7 @@ snow_adxl362_ret_code_t snow_adxl362_read_config(snow_adxl362_config_t* cfg) {
 // A wait time of 0.5ms is recommended
 // If wait_recommended is true the function waits for 1ms
 //
-snow_adxl362_ret_code_t snow_adxl362_soft_reset(bool wait_recommended) {
+snow_adxl362_ret_code_t snow_adxl362_soft_reset(snow_adxl362_device* adxl_device, bool wait_recommended) {
     // Write reset value in reset register
     uint8_t tx_buf[] = { 
         SNOW_ADXL362_WRITE, 
@@ -172,7 +171,7 @@ snow_adxl362_ret_code_t snow_adxl362_soft_reset(bool wait_recommended) {
         SNOW_ADXL362_VAL_RESET
     };
     
-    snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf, sizeof(tx_buf), NULL, 0);
+    snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf, sizeof(tx_buf), NULL, 0, adxl_device->cs_pin);
 
     if (wait_recommended)
         nrf_delay_ms(1);
@@ -182,7 +181,7 @@ snow_adxl362_ret_code_t snow_adxl362_soft_reset(bool wait_recommended) {
 
 
 
-snow_adxl362_ret_code_t snow_adxl362_read_accl(snow_accl_xyz_t* accl) {
+snow_adxl362_ret_code_t snow_adxl362_read_accl(snow_adxl362_device* adxl_device, snow_accl_xyz_t* accl) {
 
     uint8_t tx_buf[] = {
         SNOW_ADXL362_READ,        // Command read
@@ -199,7 +198,7 @@ snow_adxl362_ret_code_t snow_adxl362_read_accl(snow_accl_xyz_t* accl) {
     // rx_buf[7] <=> Z MSB
     uint8_t rx_buf[8] = {0};
 
-    snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf, 8, rx_buf, 8);
+    snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf, 8, rx_buf, 8, adxl_device->cs_pin);
 
     uint16_t x;
     uint16_t y;
@@ -211,15 +210,15 @@ snow_adxl362_ret_code_t snow_adxl362_read_accl(snow_accl_xyz_t* accl) {
     z = (rx_buf[7] << 8) | rx_buf[6]; 
 
     // Copy the bit values one-by-one instead of uint->float value conversion
-    accl->x = *((int16_t*)&x) * m_scale_factor;
-    accl->y = *((int16_t*)&y) * m_scale_factor;
-    accl->z = *((int16_t*)&z) * m_scale_factor;
+    accl->x = *((int16_t*)&x) * adxl_device->scale_factor;
+    accl->y = *((int16_t*)&y) * adxl_device->scale_factor;
+    accl->z = *((int16_t*)&z) * adxl_device->scale_factor;
 
     return err_code;
 }
 
 
-snow_adxl362_ret_code_t snow_adxl362_read_temp(float* temp) {
+snow_adxl362_ret_code_t snow_adxl362_read_temp(snow_adxl362_device* adxl_device, float* temp) {
     uint8_t tx_buf[] = {
         SNOW_ADXL362_READ,
         SNOW_ADXL362_REG_TEMPERATURE_LSB
@@ -227,7 +226,7 @@ snow_adxl362_ret_code_t snow_adxl362_read_temp(float* temp) {
 
     uint8_t rx_buf[4] = {0};
 
-    snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf, 2, rx_buf, 4);
+    snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf, 2, rx_buf, 4, adxl_device->cs_pin);
 
     uint16_t rx_temp = (rx_buf[3] << 8) | rx_buf[2];
     *temp = *((int16_t*)&rx_temp) * 0.065f;
@@ -238,12 +237,12 @@ snow_adxl362_ret_code_t snow_adxl362_read_temp(float* temp) {
 
 // Sensor self test according to datasheet page 41
 //
-snow_adxl362_ret_code_t snow_adxl362_perform_self_test(snow_adxl362_self_test_t* result, uint8_t samples) {
-    snow_adxl362_config_t old_cfg = m_cfg;
+snow_adxl362_ret_code_t snow_adxl362_perform_self_test(snow_adxl362_device* adxl_device, snow_adxl362_self_test_t* result, uint8_t samples) {
+    snow_adxl362_device old_device= *adxl_device;
     *result = 0;
 
-    m_cfg.filter_control = SNOW_ADXL362_VAL_FILTER_ODR_100 | SNOW_ADXL362_VAL_FILTER_SENS_8G;
-    snow_adxl362_ret_code_t err_code = snow_adxl362_configure(&m_cfg, false);
+    adxl_device->cfg.filter_control = SNOW_ADXL362_VAL_FILTER_ODR_100 | SNOW_ADXL362_VAL_FILTER_SENS_8G;
+    snow_adxl362_ret_code_t err_code = snow_adxl362_configure(adxl_device, false);
 
     float x = 0;
     float y = 0;
@@ -251,19 +250,19 @@ snow_adxl362_ret_code_t snow_adxl362_perform_self_test(snow_adxl362_self_test_t*
 
     for (uint8_t i = 0; i < samples; i++) {
         snow_accl_xyz_t accl1 = {0};
-        err_code = snow_adxl362_read_accl(&accl1);
+        err_code = snow_adxl362_read_accl(adxl_device, &accl1);
 
-        err_code = snow_adxl362_write_reg(SNOW_ADXL362_REG_SELF_TEST, 0x01);
+        err_code = snow_adxl362_write_reg(adxl_device, SNOW_ADXL362_REG_SELF_TEST, 0x01);
         nrf_delay_ms(40);
 
         snow_accl_xyz_t accl2 = {0};
-        err_code = snow_adxl362_read_accl(&accl2);
+        err_code = snow_adxl362_read_accl(adxl_device, &accl2);
   
         x += accl2.x - accl1.x;
         y += accl2.y - accl1.y;
         z += accl2.z - accl1.z;
 
-        err_code = snow_adxl362_write_reg(SNOW_ADXL362_REG_SELF_TEST, 0x00);
+        err_code = snow_adxl362_write_reg(adxl_device, SNOW_ADXL362_REG_SELF_TEST, 0x00);
 
         nrf_delay_ms(10);
     }
@@ -278,21 +277,21 @@ snow_adxl362_ret_code_t snow_adxl362_perform_self_test(snow_adxl362_self_test_t*
 
     
 
-    m_cfg = old_cfg;
-    err_code = snow_adxl362_configure(&m_cfg, false);
+    *adxl_device = old_device;
+    err_code = snow_adxl362_configure(adxl_device, false);
 
     return SNOW_ADXL362_OK;
 }
 
 
 
-snow_adxl362_ret_code_t snow_adxl362_write_reg(uint8_t reg_addr, uint8_t reg_val) {
+snow_adxl362_ret_code_t snow_adxl362_write_reg(snow_adxl362_device* adxl_device, uint8_t reg_addr, uint8_t reg_val) {
     uint8_t tx_buf[] = {
         SNOW_ADXL362_WRITE,
         reg_addr,
         reg_val
     };
 
-    return nrf_spi_transfer(tx_buf, sizeof(tx_buf), NULL, 0);
+    return nrf_spi_transfer(tx_buf, sizeof(tx_buf), NULL, 0, adxl_device->cs_pin);
 }
 
