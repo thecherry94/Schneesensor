@@ -93,8 +93,7 @@ snow_adxl362_ret_code_t snow_adxl362_perform_self_test(snow_adxl362_device* adxl
 snow_adxl362_ret_code_t snow_adxl362_write_reg(snow_adxl362_device* adxl_device, uint8_t reg_addr, uint8_t reg_val);
 
 
-struct snow_adxl362_device snow_adxl362_create_device();
-struct snow_adxl362_device snow_adxl362_create_device(snow_adxl362_config_t cfg);
+struct snow_adxl362_device snow_adxl362_create_device(uint8_t cs_pin, snow_adxl362_config_t* user_cfg);
 
 
 

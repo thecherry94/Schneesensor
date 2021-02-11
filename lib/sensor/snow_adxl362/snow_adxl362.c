@@ -4,8 +4,8 @@
 #include <stdio.h>
 
 
-nrf_drv_spi_t*                m_spi;
-snow_adxl362_spi_transfer_t   m_spi_transfer_func;
+nrf_drv_spi_t*                m_spi = NULL;
+snow_adxl362_spi_transfer_t   m_spi_transfer_func = NULL;
 
 
 
@@ -22,8 +22,11 @@ snow_adxl362_ret_code_t snow_adxl362_init(snow_adxl362_device* adxl_device, nrf_
     nrf_gpio_cfg_output(adxl_device->cs_pin);
     nrf_gpio_pin_set(adxl_device->cs_pin);
     
-    m_spi = spi_instance;
-    m_spi_transfer_func = spi_transfer_func_ptr;
+    if (m_spi == NULL)
+        m_spi = spi_instance;
+
+    if (m_spi_transfer_func == NULL)
+        m_spi_transfer_func = spi_transfer_func_ptr;
 
     // Perform a read of some constant registers set by the manufacturer as a test
     //
@@ -295,3 +298,75 @@ snow_adxl362_ret_code_t snow_adxl362_write_reg(snow_adxl362_device* adxl_device,
     return nrf_spi_transfer(tx_buf, sizeof(tx_buf), NULL, 0, adxl_device->cs_pin);
 }
 
+
+struct snow_adxl362_device snow_adxl362_create_device(uint8_t cs_pin, snow_adxl362_config_t* user_cfg) {
+    snow_adxl362_device device;
+    
+    snow_adxl362_config_t default_cfg = {
+        .filter_control = 
+        SNOW_ADXL362_VAL_FILTER_ODR_100 | 
+        SNOW_ADXL362_VAL_FILTER_EXT_SAMPLE_OFF | 
+        SNOW_ADXL362_VAL_FILTER_BW_HALF | 
+        SNOW_ADXL362_VAL_FILTER_SENS_2G,
+
+        .power_control = 
+        SNOW_ADXL362_VAL_PWR_MEASURE |
+        SNOW_ADXL362_VAL_PWR_AUTOSLEEP_OFF |
+        SNOW_ADXL362_VAL_PWR_WAKEUP_OFF | 
+        SNOW_ADXL362_VAL_PWR_NOISE_NORMAL | 
+        SNOW_ADXL362_VAL_PWR_EXT_CLOCK_OFF,
+
+        .activity_control = 
+        SNOW_ADXL362_VAL_ACT_ACT_EN_OFF |
+        SNOW_ADXL362_VAL_ACT_REF_OFF | 
+        SNOW_ADXL362_VAL_ACT_INACT_OFF |
+        SNOW_ADXL362_VAL_ACT_INACT_REF_OFF | 
+        SNOW_ADXL362_VAL_ACT_LL_DEFAULT,
+
+        .fifo_control = 
+        SNOW_ADXL362_VAL_FIFO_DISABLED |
+        SNOW_ADXL362_VAL_FIFO_TEMP_OFF | 
+        SNOW_ADXL362_VAL_FIFO_ABOVE_HALF_OFF,
+
+        .intmap1 = 
+        SNOW_ADXL362_VAL_INTMAP_DATA_READY_OFF |
+        SNOW_ADXL362_VAL_INTMAP_FIFO_READY_OFF |
+        SNOW_ADXL362_VAL_INTMAP_FIFO_WM_OFF |
+        SNOW_ADXL362_VAL_INTMAP_FIFO_OV_OFF |
+        SNOW_ADXL362_VAL_INTMAP_ACTIVITY_OFF |
+        SNOW_ADXL362_VAL_INTMAP_INACTIVITY_OFF |
+        SNOW_ADXL362_VAL_INTMAP_AWAKE_OFF |
+        SNOW_ADXL362_VAL_INTMAP_ACTIVE_LOW_OFF,
+
+        .intmap2 = 
+        SNOW_ADXL362_VAL_INTMAP_DATA_READY_OFF |
+        SNOW_ADXL362_VAL_INTMAP_FIFO_READY_OFF |
+        SNOW_ADXL362_VAL_INTMAP_FIFO_WM_OFF |
+        SNOW_ADXL362_VAL_INTMAP_FIFO_OV_OFF |
+        SNOW_ADXL362_VAL_INTMAP_ACTIVITY_OFF |
+        SNOW_ADXL362_VAL_INTMAP_INACTIVITY_OFF |
+        SNOW_ADXL362_VAL_INTMAP_AWAKE_OFF |
+        SNOW_ADXL362_VAL_INTMAP_ACTIVE_LOW_OFF,
+        
+        .threshold_active = 0x6D,
+
+        .time_active = 0x00,
+
+        .threshold_inactive = 0x6D,
+
+        .time_inactive = 0x00
+    };
+
+    device.cfg = user_cfg == NULL ? default_cfg : *user_cfg;
+    device.cs_pin = cs_pin;
+    device.initialized = false;
+    device.scale_factor = 0;
+
+    return device;
+}
+
+
+/*struct snow_adxl362_device snow_adxl362_create_device(snow_adxl362_config_t* cfg) {
+
+}
+*/
