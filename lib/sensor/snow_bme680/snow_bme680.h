@@ -36,8 +36,8 @@ typedef struct snow_bme680_device {
 
 
 
-static int8_t user_i2c_read(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint16_t len);
-static int8_t user_i2c_write(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint16_t len);
+static int8_t bme680_i2c_read(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint16_t len);
+static int8_t bme680_i2c_write(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint16_t len);
 
 int8_t snow_bme680_init(struct snow_bme680_device* snow_bme_device, const nrf_drv_twi_t*, int8_t);
 int8_t snow_bme680_configure(struct snow_bme680_device* snow_bme_device, uint16_t* meas_period);

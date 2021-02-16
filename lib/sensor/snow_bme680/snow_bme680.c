@@ -14,8 +14,8 @@ int8_t snow_bme680_init(struct snow_bme680_device* snow_bme_device, const nrf_dr
 
     bme_device->dev_id = SNOW_BME680_ADDR;
     bme_device->intf = SNOW_BME680_INTF;
-    bme_device->read = &user_i2c_read;
-    bme_device->write = &user_i2c_write;
+    bme_device->read = &bme680_i2c_read;
+    bme_device->write = &bme680_i2c_write;
     bme_device->delay_ms = nrf_delay_ms;
 
     bme_device->amb_temp = amb_temp;
@@ -80,7 +80,8 @@ int8_t snow_bme680_measure(struct snow_bme680_device* snow_bme_device, struct bm
 }
 
 
-static int8_t user_i2c_read(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint16_t len) {
+
+static int8_t bme680_i2c_read(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint16_t len) {
     int8_t rslt = 0; /* Return 0 for Success, non-zero for failure */
 
     /*
@@ -108,7 +109,7 @@ static int8_t user_i2c_read(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data,
 }
 
 
-static int8_t user_i2c_write(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint16_t len) {
+static int8_t bme680_i2c_write(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint16_t len) {
     int8_t rslt = 0; /* Return 0 for Success, non-zero for failure */
     /*
      * The parameter dev_id can be used as a variable to store the I2C address of the device
@@ -138,3 +139,5 @@ static int8_t user_i2c_write(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data
     
     return err_code;
 }
+
+
