@@ -1,13 +1,10 @@
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-/* DEFINES */
-#define TWI_INSTANCE_ID 0
-#define SPI_INSTANCE_ID 1
 
 
 /* INCLUDES */
@@ -24,53 +21,92 @@
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 
+#include "snow_slave.h"
+
 
 #include <math.h>
 
-#include "snow_bme680.h"
-#include "snow_adxl362.h"
 
 
-/* FUNCTION DECLARATIONS */
-void twi_init();
-
-void test_bme();
-void test_adxl362();
-void test_everything();
-    
-
-
-
-snow_adxl362_ret_code_t nrf_spi_transfer(uint8_t* tx_buf, uint8_t tx_len, uint8_t* rx_buf, uint8_t rx_len, uint8_t cs_pin);
-
-
-ret_code_t spi_init();
-
-
-/* GLOBAL VARIABLES */
+// Member variables
+//
 static const nrf_drv_twi_t m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
 static const nrf_drv_spi_t m_spi = NRF_DRV_SPI_INSTANCE(SPI_INSTANCE_ID);
 
 
 
-/*
-void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
-                       void *                    p_context)
-{
-    nrf_gpio_pin_set(23);
-    spi_xfer_done = true;
-}
-*/
 
 
-//========= MAIN ====================
-int main(void) { // renamed to mainThread() on CCxxyy
 
-    //test_bme();
-    //test_adxl362();
-    test_everything();
+
+uint8_t snow_slave_init() {
+    spi_init();
+    twi_init();
+
+    
     
 }
+
+uint8_t snow_slave_run() {
+    #ifdef __DEBUG__
+    test_everything();
+    #endif
+}
+
+
+
+uint8_t snow_slave_measure(uint8_t meas_params, uint8_t num_samples) {
+    
+}
+
+
+
+uint8_t snow_slave_check_components(uint8_t components) {
+    
+}
+
+
+
+
+
+ret_code_t spi_init() {
+    nrf_drv_spi_config_t spi_config = NRF_DRV_SPI_DEFAULT_CONFIG;
+    spi_config.ss_pin = SPI_SS_PIN;
+    spi_config.miso_pin = SPI_MISO_PIN;
+    spi_config.mosi_pin = SPI_MOSI_PIN;
+    spi_config.sck_pin = SPI_SCK_PIN;
+    spi_config.frequency = NRF_DRV_SPI_FREQ_125K;
+    spi_config.mode = NRF_DRV_SPI_MODE_0;
+    ret_code_t err_code = nrf_drv_spi_init(&m_spi, &spi_config, NULL, NULL);
+
+    return err_code;
+}
+
+
+ret_code_t twi_init() {
+    ret_code_t err_code;
+
+    const nrf_drv_twi_config_t twi_conf = {
+        .scl = ARDUINO_SCL_PIN,
+        .sda = ARDUINO_SDA_PIN,
+        .frequency = NRF_DRV_TWI_FREQ_100K,
+        .interrupt_priority = APP_IRQ_PRIORITY_LOW,
+        .clear_bus_init = true
+    };
+
+    err_code = nrf_drv_twi_init(&m_twi, &twi_conf, NULL, NULL);
+    APP_ERROR_CHECK(err_code);
+
+    nrf_drv_twi_enable(&m_twi);
+
+    return err_code;
+}
+
+
+
+
+
+#ifdef __DEBUG__
 
 void test_bme() {
     twi_init();
@@ -188,41 +224,6 @@ void test_everything() {
     }
 }
 
+#endif
 
-ret_code_t spi_init() {
-    nrf_drv_spi_config_t spi_config = NRF_DRV_SPI_DEFAULT_CONFIG;
-    spi_config.ss_pin = SPI_SS_PIN;
-    spi_config.miso_pin = SPI_MISO_PIN;
-    spi_config.mosi_pin = SPI_MOSI_PIN;
-    spi_config.sck_pin = SPI_SCK_PIN;
-    spi_config.frequency = NRF_DRV_SPI_FREQ_125K;
-    spi_config.mode = NRF_DRV_SPI_MODE_0;
-    ret_code_t err_code = nrf_drv_spi_init(&m_spi, &spi_config, NULL, NULL);
-}
-
-void twi_init() {
-    ret_code_t err_code;
-
-    const nrf_drv_twi_config_t twi_conf = {
-        .scl = ARDUINO_SCL_PIN,
-        .sda = ARDUINO_SDA_PIN,
-        .frequency = NRF_DRV_TWI_FREQ_100K,
-        .interrupt_priority = APP_IRQ_PRIORITY_LOW,
-        .clear_bus_init = true
-    };
-
-    err_code = nrf_drv_twi_init(&m_twi, &twi_conf, NULL, NULL);
-    APP_ERROR_CHECK(err_code);
-
-    nrf_drv_twi_enable(&m_twi);
-}
-
-
-snow_adxl362_ret_code_t nrf_spi_transfer(uint8_t* tx_buf, uint8_t tx_len, uint8_t* rx_buf, uint8_t rx_len, uint8_t cs_pin) {
-    nrf_gpio_pin_clear(cs_pin);
-    ret_code_t err_code = nrf_drv_spi_transfer(&m_spi, tx_buf, tx_len, rx_buf, rx_len);
-    nrf_gpio_pin_set(cs_pin);
-
-    return err_code == NRF_SUCCESS ? SNOW_ADXL362_OK : SNOW_ADXL362_SPI_ERROR;
-}
 

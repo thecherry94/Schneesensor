@@ -61,6 +61,12 @@ uint8_t snow_slave_measure(uint8_t meas_params, uint8_t num_samples) {
 
 
 
+uint8_t snow_slave_check_components(uint8_t components) {
+    
+}
+
+
+
 
 
 ret_code_t spi_init() {

@@ -26,9 +26,7 @@
 
 #include <math.h>
 
-#include "snow_slave.h"
-#include "snow_bme680.h"
-#include "snow_adxl362.h"
+#include "lib/module/snow_slave/snow_slave.h"
 
 
 //========= MAIN ====================

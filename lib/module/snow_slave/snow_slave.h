@@ -4,8 +4,8 @@ TODO:
 
  */ 
 
- #include "snow_adxl362.h"
- #include "snow_bme680.h"
+ #include "lib/sensor/snow_adxl362/snow_adxl362.h"
+ #include "lib/sensor/snow_bme680/snow_bme680.h"
 
 
 #ifndef SNOW_SLAVE_H
