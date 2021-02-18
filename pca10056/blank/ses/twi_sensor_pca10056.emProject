@@ -89,12 +89,19 @@
             <file file_name="../../../lib/sensor/snow_bme680/snow_bme680.c" />
             <file file_name="../../../lib/sensor/snow_bme680/snow_bme680.h" />
           </folder>
-          <folder Name="snow_gps" />
+          <folder Name="snow_gps">
+            <file file_name="../../../lib/sensor/snow_gps/snow_gps.c" />
+            <file file_name="../../../lib/sensor/snow_gps/snow_gps.h" />
+          </folder>
         </folder>
         <folder Name="module">
           <folder Name="snow_slave">
             <file file_name="../../../lib/module/snow_slave/snow_slave.c" />
             <file file_name="../../../lib/module/snow_slave/snow_slave.h" />
+          </folder>
+          <folder Name="spi_handler">
+            <file file_name="../../../lib/module/spi_handler/spi_handler.c" />
+            <file file_name="../../../lib/module/spi_handler/spi_handler.h" />
           </folder>
         </folder>
       </folder>
