@@ -103,6 +103,10 @@
             <file file_name="../../../lib/module/spi_handler/spi_handler.c" />
             <file file_name="../../../lib/module/spi_handler/spi_handler.h" />
           </folder>
+          <folder Name="i2c_handler">
+            <file file_name="../../../lib/module/i2c_handler/i2c_handler.c" />
+            <file file_name="../../../lib/module/i2c_handler/i2c_handler.h" />
+          </folder>
         </folder>
       </folder>
     </folder>

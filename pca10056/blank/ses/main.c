@@ -5,9 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* DEFINES */
-#define TWI_INSTANCE_ID 0
-#define SPI_INSTANCE_ID 1
+
 
 
 /* INCLUDES */

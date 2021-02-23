@@ -27,7 +27,6 @@
 #include <math.h>
 
 
-
 // Member variables
 //
 static const nrf_drv_twi_t m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
@@ -172,33 +171,34 @@ void test_adxl362() {
 
 
 void test_everything() {
-    // Init interfaces 
-    //
-    spi_init();
-    twi_init();
+
 
     // Init both ADXL362
     //
     snow_adxl362_device device = snow_adxl362_create_device(23, NULL);
 
-    snow_adxl362_init(&device, &m_spi, nrf_spi_transfer);
+    snow_adxl362_init(&device, &m_spi, &nrf_spi_transfer);
     snow_adxl362_soft_reset(&device, true);
-    snow_adxl362_configure(&device, true);
+    if (snow_adxl362_configure(&device, true) == SNOW_ADXL362_CONFIGURATION_ERROR) {
+        printf("ADXL362 config error (cs_pin=%d)\n", device.cs_pin);
+    }
 
 
-    snow_adxl362_device device2 = snow_adxl362_create_device(38, NULL);
+    //snow_adxl362_device device2 = snow_adxl362_create_device(38, NULL);
 
-    snow_adxl362_init(&device2, &m_spi, nrf_spi_transfer);
-    snow_adxl362_soft_reset(&device2, true);
-    snow_adxl362_configure(&device2, true);
+    //snow_adxl362_init(&device2, &m_spi, &nrf_spi_transfer);
+    //snow_adxl362_soft_reset(&device2, true);
+    //if (snow_adxl362_configure(&device2, true) == SNOW_ADXL362_CONFIGURATION_ERROR) {
+    //    printf("ADXL362 config error (cs_pin=%d)\n", device2.cs_pin);
+    //}
 
     // Init BME680
     struct bme680_dev bme;
 
     uint16_t meas_period = 0;
 
-    snow_bme680_init(&bme, &m_twi, 10);
-    snow_bme680_configure(&bme, &meas_period);
+    //snow_bme680_init(&bme, &m_twi, 10);
+    //snow_bme680_configure(&bme, &meas_period);
 
     struct bme680_field_data data;
     snow_accl_xyz_t accl = {0};
@@ -208,17 +208,17 @@ void test_everything() {
         snow_adxl362_read_temp(&device, &temp);
         printf("ADXL362_1\t=> X: %.2f | Y:%.2f | Z: %.2f | T: %.2f\n", accl.x, accl.y, accl.z, temp);
 
-        snow_adxl362_read_accl(&device2, &accl);
-        snow_adxl362_read_temp(&device2, &temp);
-        printf("ADXL362_2\t=> X: %.2f | Y:%.2f | Z: %.2f | T: %.2f\n", accl.x, accl.y, accl.z, temp);
+        //snow_adxl362_read_accl(&device2, &accl);
+        //snow_adxl362_read_temp(&device2, &temp);
+        //printf("ADXL362_2\t=> X: %.2f | Y:%.2f | Z: %.2f | T: %.2f\n", accl.x, accl.y, accl.z, temp);
         
         //snow_adxl362_self_test_t test = 0;
         //snow_adxl362_perform_self_test(&device, &test, 16);
 
-        snow_bme680_measure(&bme, &data, false);
+        //snow_bme680_measure(&bme, &data, false);
         
-        printf("BME680   \t=> T: %.2f degC, P: %.2f hPa, H: %.2f %%rH\n\n", data.temperature / 100.0f,
-            data.pressure / 100.0f, data.humidity / 1000.0f);
+        //printf("BME680   \t=> T: %.2f degC, P: %.2f hPa, H: %.2f %%rH\n\n", data.temperature / 100.0f,
+        //    data.pressure / 100.0f, data.humidity / 1000.0f);
         
         nrf_delay_ms(100);
     }

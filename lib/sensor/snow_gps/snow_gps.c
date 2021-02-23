@@ -1,3 +1,4 @@
+/*
 #include "snow_gps.h"
 #include "nrf_delay.h"
 
@@ -15,6 +16,8 @@ uint8_t m_rolling_checksumA;
 uint8_t m_rolling_checksumB;
 
 uint16_t m_rtcm_frame_counter = 0;
+
+size_t m_packet_cfg_payload_size = 0;
 
 //The packet buffers
 //These are pointed at from within the ubxPacket
@@ -336,6 +339,146 @@ void snow_gps_process_incoming_data(uint8_t incoming, ubx_packet* p, uint8_t req
 }
 
 
+void snow_gps_process_ubx(uint8_t incoming, ubx_packet p, uint8_t requested_class, uint8_t requested_id) {
+    size_t max_payload_size;
+  
+    if (m_active_packet_buffer == SFE_UBLOX_PACKET_PACKETCFG) {
+        max_payload_size = m_packet_cfg_payload_size;
+    } else if (m_active_packet_buffer == SFE_UBLOX_PACKET_PACKETAUTO) {
+        
+    }
+}
+
+
+
+// Calculate how much RAM is needed to store the payload for a given automatic message
+uint16_t SFE_UBLOX_GNSS::getMaxPayloadSize(uint8_t Class, uint8_t ID)
+{
+  uint16_t maxSize = 0;
+  switch (Class)
+  {
+    case UBX_CLASS_NAV:
+    {
+      switch (ID)
+      {
+        case UBX_NAV_POSECEF:
+          maxSize = UBX_NAV_POSECEF_LEN;
+        break;
+        case UBX_NAV_STATUS:
+          maxSize = UBX_NAV_STATUS_LEN;
+        break;
+        case UBX_NAV_DOP:
+          maxSize = UBX_NAV_DOP_LEN;
+        break;
+        case UBX_NAV_ATT:
+          maxSize = UBX_NAV_ATT_LEN;
+        break;
+        case UBX_NAV_PVT:
+          maxSize = UBX_NAV_PVT_LEN;
+        break;
+        case UBX_NAV_ODO:
+          maxSize = UBX_NAV_ODO_LEN;
+        break;
+        case UBX_NAV_VELECEF:
+          maxSize = UBX_NAV_VELECEF_LEN;
+        break;
+        case UBX_NAV_VELNED:
+          maxSize = UBX_NAV_VELNED_LEN;
+        break;
+        case UBX_NAV_HPPOSECEF:
+          maxSize = UBX_NAV_HPPOSECEF_LEN;
+        break;
+        case UBX_NAV_HPPOSLLH:
+          maxSize = UBX_NAV_HPPOSLLH_LEN;
+        break;
+        case UBX_NAV_CLOCK:
+          maxSize = UBX_NAV_CLOCK_LEN;
+        break;
+        case UBX_NAV_SVIN:
+          maxSize = UBX_NAV_SVIN_LEN;
+        break;
+        case UBX_NAV_RELPOSNED:
+          maxSize = UBX_NAV_RELPOSNED_LEN_F9;
+        break;
+      }
+    }
+    break;
+    case UBX_CLASS_RXM:
+    {
+      switch (ID)
+      {
+        case UBX_RXM_SFRBX:
+          maxSize = UBX_RXM_SFRBX_MAX_LEN;
+        break;
+        case UBX_RXM_RAWX:
+          maxSize = UBX_RXM_RAWX_MAX_LEN;
+        break;
+      }
+    }
+    break;
+    case UBX_CLASS_CFG:
+    {
+      switch (ID)
+      {
+        case UBX_CFG_RATE:
+          maxSize = UBX_CFG_RATE_LEN;
+        break;
+      }
+    }
+    break;
+    case UBX_CLASS_TIM:
+    {
+      switch (ID)
+      {
+        case UBX_TIM_TM2:
+          maxSize = UBX_TIM_TM2_LEN;
+        break;
+      }
+    }
+    break;
+    case UBX_CLASS_ESF:
+    {
+      switch (ID)
+      {
+        case UBX_ESF_ALG:
+          maxSize = UBX_ESF_ALG_LEN;
+        break;
+        case UBX_ESF_INS:
+          maxSize = UBX_ESF_INS_LEN;
+        break;
+        case UBX_ESF_MEAS:
+          maxSize = UBX_ESF_MEAS_MAX_LEN;
+        break;
+        case UBX_ESF_RAW:
+          maxSize = UBX_ESF_RAW_MAX_LEN;
+        break;
+        case UBX_ESF_STATUS:
+          maxSize = UBX_ESF_STATUS_MAX_LEN;
+        break;
+      }
+    }
+    break;
+    case UBX_CLASS_HNR:
+    {
+      switch (ID)
+      {
+        case UBX_HNR_PVT:
+          maxSize = UBX_HNR_PVT_LEN;
+        break;
+        case UBX_HNR_ATT:
+          maxSize = UBX_HNR_ATT_LEN;
+        break;
+        case UBX_HNR_INS:
+          maxSize = UBX_HNR_INS_LEN;
+        break;
+      }
+    }
+    break;
+  }
+  return (maxSize);
+}
+
+
 
 // Calculates the checksum for a given ubx packet
 //
@@ -360,3 +503,5 @@ uint8_t snow_gps_calc_command_checksum(struct ubx_packet* p) {
         p->checksumB += p->checksumA;
     }
 }
+
+*/

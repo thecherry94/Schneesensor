@@ -207,7 +207,7 @@ snow_adxl362_ret_code_t snow_adxl362_read_accl(snow_adxl362_device* adxl_device,
     // rx_buf[7] <=> Z MSB
     uint8_t rx_buf[8] = {0};
 
-    snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf, 8, rx_buf, 8, adxl_device->cs_pin);
+    snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf, 2, rx_buf, 8, adxl_device->cs_pin);
 
     uint16_t x;
     uint16_t y;

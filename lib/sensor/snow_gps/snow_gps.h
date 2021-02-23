@@ -1,3 +1,5 @@
+/*
+
 #ifndef SNOW_GPS_H
 #define SNOW_GPS_H
 
@@ -106,3 +108,5 @@ bool snow_gps_check_automatic(uint8_t cls, uint8_t id);
 
 
 #endif
+
+*/
