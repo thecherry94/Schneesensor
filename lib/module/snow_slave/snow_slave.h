@@ -6,6 +6,7 @@ TODO:
 
  #include "lib/sensor/snow_adxl362/snow_adxl362.h"
  #include "lib/sensor/snow_bme680/snow_bme680.h"
+ #include "lib/sensor/snow_gps/snow_gps.h"
 
 
 #ifndef SNOW_SLAVE_H
@@ -92,6 +93,7 @@ ret_code_t spi_init();
 #ifdef __DEBUG__
 void test_bme();
 void test_adxl362();
+void test_gps();
 void test_everything();
 #endif 
 

@@ -63,7 +63,7 @@ uint8_t snow_slave_init() {
 
 uint8_t snow_slave_run() {
     #ifdef __DEBUG__
-    test_everything();
+    test_gps();
     #endif
 }
 
@@ -183,6 +183,23 @@ void test_adxl362() {
         nrf_delay_ms(100);
     }
 }
+
+
+
+void test_gps() {
+    snow_gps_device gps;
+    
+    gps.i2c_addr = SNOW_GPS_I2C_ADDR;
+    snow_gps_init(&gps, &m_twi);
+
+    for (;;) {
+        snow_gps_read_data(&gps, NULL);
+        nrf_delay_ms(100);
+    }
+}
+
+
+
 
 
 void test_everything() {
