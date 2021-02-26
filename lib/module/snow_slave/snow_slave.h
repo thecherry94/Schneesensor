@@ -52,11 +52,12 @@ typedef struct snow_slave_measurement_t {
 } snow_slave_measurement_t;
 
 
-
+//
 // Functions
 //
 
 // Main functions
+//
 
 // Initialize entire system
 uint8_t snow_slave_init();
@@ -67,11 +68,17 @@ uint8_t snow_slave_run();
 // Conduct a measurement
 uint8_t snow_slave_measure(uint8_t meas_params, uint8_t num_samples);
 
-// Check if all components are OK
+// Check if component(s) are OK
 uint8_t snow_slave_check_components(uint8_t components);
+
+// Restart component(s)
+uint8_t snow_slave_reset_components(uint8_t components);
+
+
 
 
 // General init functions
+//
 
 // Init I²C
 ret_code_t twi_init();
@@ -81,12 +88,15 @@ ret_code_t spi_init();
 
 
 // Test functions
+//
 #ifdef __DEBUG__
 void test_bme();
 void test_adxl362();
 void test_everything();
 #endif 
 
+// SPI transfer function for the adxl362
+snow_adxl362_ret_code_t nrf_spi_transfer(uint8_t* tx_buf, uint8_t tx_len, uint8_t* rx_buf, uint8_t rx_len, uint8_t cs_pin);
 
 
 // Callbacks / Events

@@ -4231,7 +4231,7 @@
 // <4294967295=> Not connected 
 
 #ifndef SPI_SCK_PIN
-#define SPI_SCK_PIN 47
+#define SPI_SCK_PIN 41
 #endif
 
 // <o> SPI_MISO_PIN  - Pin number
@@ -4287,7 +4287,7 @@
 // <4294967295=> Not connected 
 
 #ifndef SPI_MISO_PIN
-#define SPI_MISO_PIN 46
+#define SPI_MISO_PIN 4
 #endif
 
 // <o> SPI_MOSI_PIN  - Pin number
@@ -4343,7 +4343,7 @@
 // <4294967295=> Not connected 
 
 #ifndef SPI_MOSI_PIN
-#define SPI_MOSI_PIN 45
+#define SPI_MOSI_PIN 40
 #endif
 
 // <o> SPI_SS_PIN  - Pin number

@@ -39,11 +39,26 @@ static const nrf_drv_spi_t m_spi = NRF_DRV_SPI_INSTANCE(SPI_INSTANCE_ID);
 
 
 uint8_t snow_slave_init() {
-    spi_init();
-    twi_init();
+    ret_code_t err_code;
 
-    
-    
+    err_code = spi_init();
+
+
+    #ifdef __DEBUG__
+    printf ("[DEBUG] SPI initialization %s\n", err_code == NRF_SUCCESS ? "successful" : "failed");
+    #endif
+
+    err_code = twi_init();
+
+    #ifdef __DEBUG__
+    printf ("[DEBUG] TWI initialization %s\n", err_code == NRF_SUCCESS ? "successful" : "failed");
+    #endif
+
+    #ifdef __DEBUG__
+    printf ("[DEBUG] Snow sensor slave initialization %s\n", err_code == NRF_SUCCESS ? "successful" : "failed");
+    #endif
+
+    return err_code;
 }
 
 uint8_t snow_slave_run() {
@@ -74,7 +89,7 @@ ret_code_t spi_init() {
     spi_config.miso_pin = SPI_MISO_PIN;
     spi_config.mosi_pin = SPI_MOSI_PIN;
     spi_config.sck_pin = SPI_SCK_PIN;
-    spi_config.frequency = NRF_DRV_SPI_FREQ_125K;
+    spi_config.frequency = NRF_DRV_SPI_FREQ_1M;
     spi_config.mode = NRF_DRV_SPI_MODE_0;
     ret_code_t err_code = nrf_drv_spi_init(&m_spi, &spi_config, NULL, NULL);
 
@@ -120,7 +135,7 @@ void test_bme() {
     struct bme680_field_data data;
 
     for (;;) {
-        snow_bme680_measure(&bme, &data, true);
+        snow_bme680_measure(&bme, &data);
         
 
         printf("T: %.2f degC, P: %.2f hPa, H: %.2f %%rH\n", data.temperature / 100.0f,
@@ -173,32 +188,34 @@ void test_adxl362() {
 void test_everything() {
 
 
+    //spi_init();
+    //twi_init();
+
     // Init both ADXL362
     //
     snow_adxl362_device device = snow_adxl362_create_device(23, NULL);
 
-    snow_adxl362_init(&device, &m_spi, &nrf_spi_transfer);
+    snow_adxl362_init(&device, &m_spi, nrf_spi_transfer);
     snow_adxl362_soft_reset(&device, true);
     if (snow_adxl362_configure(&device, true) == SNOW_ADXL362_CONFIGURATION_ERROR) {
         printf("ADXL362 config error (cs_pin=%d)\n", device.cs_pin);
     }
 
+    snow_adxl362_device device2 = snow_adxl362_create_device(38, NULL);
 
-    //snow_adxl362_device device2 = snow_adxl362_create_device(38, NULL);
-
-    //snow_adxl362_init(&device2, &m_spi, &nrf_spi_transfer);
-    //snow_adxl362_soft_reset(&device2, true);
-    //if (snow_adxl362_configure(&device2, true) == SNOW_ADXL362_CONFIGURATION_ERROR) {
-    //    printf("ADXL362 config error (cs_pin=%d)\n", device2.cs_pin);
-    //}
+    snow_adxl362_init(&device2, &m_spi, &nrf_spi_transfer);
+    snow_adxl362_soft_reset(&device2, true);
+    if (snow_adxl362_configure(&device2, true) == SNOW_ADXL362_CONFIGURATION_ERROR) {
+        printf("ADXL362 config error (cs_pin=%d)\n", device2.cs_pin);
+    }
 
     // Init BME680
     struct bme680_dev bme;
 
     uint16_t meas_period = 0;
 
-    //snow_bme680_init(&bme, &m_twi, 10);
-    //snow_bme680_configure(&bme, &meas_period);
+    snow_bme680_init(&bme, &m_twi, 10);
+    snow_bme680_configure(&bme, &meas_period);
 
     struct bme680_field_data data;
     snow_accl_xyz_t accl = {0};
@@ -208,17 +225,17 @@ void test_everything() {
         snow_adxl362_read_temp(&device, &temp);
         printf("ADXL362_1\t=> X: %.2f | Y:%.2f | Z: %.2f | T: %.2f\n", accl.x, accl.y, accl.z, temp);
 
-        //snow_adxl362_read_accl(&device2, &accl);
-        //snow_adxl362_read_temp(&device2, &temp);
-        //printf("ADXL362_2\t=> X: %.2f | Y:%.2f | Z: %.2f | T: %.2f\n", accl.x, accl.y, accl.z, temp);
+        snow_adxl362_read_accl(&device2, &accl);
+        snow_adxl362_read_temp(&device2, &temp);
+        printf("ADXL362_2\t=> X: %.2f | Y:%.2f | Z: %.2f | T: %.2f\n", accl.x, accl.y, accl.z, temp);
         
-        //snow_adxl362_self_test_t test = 0;
+        snow_adxl362_self_test_t test = 0;
         //snow_adxl362_perform_self_test(&device, &test, 16);
 
-        //snow_bme680_measure(&bme, &data, false);
+        snow_bme680_measure(&bme, &data);
         
-        //printf("BME680   \t=> T: %.2f degC, P: %.2f hPa, H: %.2f %%rH\n\n", data.temperature / 100.0f,
-        //    data.pressure / 100.0f, data.humidity / 1000.0f);
+        printf("BME680   \t=> T: %.2f degC, P: %.2f hPa, H: %.2f %%rH\n\n", data.temperature / 100.0f,
+            data.pressure / 100.0f, data.humidity / 1000.0f);
         
         nrf_delay_ms(100);
     }

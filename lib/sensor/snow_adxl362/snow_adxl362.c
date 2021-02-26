@@ -131,9 +131,6 @@ snow_adxl362_ret_code_t snow_adxl362_configure(snow_adxl362_device* adxl_device,
 
 
 snow_adxl362_ret_code_t snow_adxl362_read_config(snow_adxl362_device* adxl_device, snow_adxl362_config_t* cfg) {
-    if (!adxl_device->initialized)
-        return SNOW_ADXL362_NOT_INITIALIZED_ERROR;
-
     // Begin read from first configuration register and perform a burst read
     uint8_t tx_buf[] = {
         SNOW_ADXL362_READ,
@@ -189,8 +186,6 @@ snow_adxl362_ret_code_t snow_adxl362_soft_reset(snow_adxl362_device* adxl_device
 
 
 snow_adxl362_ret_code_t snow_adxl362_read_accl(snow_adxl362_device* adxl_device, snow_accl_xyz_t* accl) {
-    if (!adxl_device->initialized)
-        return SNOW_ADXL362_NOT_INITIALIZED_ERROR;
 
     uint8_t tx_buf[] = {
         SNOW_ADXL362_READ,        // Command read
@@ -228,9 +223,6 @@ snow_adxl362_ret_code_t snow_adxl362_read_accl(snow_adxl362_device* adxl_device,
 
 
 snow_adxl362_ret_code_t snow_adxl362_read_temp(snow_adxl362_device* adxl_device, float* temp) {
-    if (!adxl_device->initialized)
-        return SNOW_ADXL362_NOT_INITIALIZED_ERROR;
-
     uint8_t tx_buf[] = {
         SNOW_ADXL362_READ,
         SNOW_ADXL362_REG_TEMPERATURE_LSB
@@ -250,9 +242,6 @@ snow_adxl362_ret_code_t snow_adxl362_read_temp(snow_adxl362_device* adxl_device,
 // Sensor self test according to datasheet page 41
 //
 snow_adxl362_ret_code_t snow_adxl362_perform_self_test(snow_adxl362_device* adxl_device, snow_adxl362_self_test_t* result, uint8_t samples) {
-    if (!adxl_device->initialized)
-        return SNOW_ADXL362_NOT_INITIALIZED_ERROR;
-
     snow_adxl362_device old_device= *adxl_device;
     *result = 0;
 
@@ -286,9 +275,9 @@ snow_adxl362_ret_code_t snow_adxl362_perform_self_test(snow_adxl362_device* adxl
     y /= samples;
     z /= samples;
 
-    *result |= inRange(0.2f, 2.8f, x) ? SNOW_ADXL362_SELF_TEST_X_OK : 0;
-    *result |= inRange(-2.8f, -0.2f, y) ? SNOW_ADXL362_SELF_TEST_Y_OK : 0;
-    *result |= inRange(0.2f, 2.8f, z) ? SNOW_ADXL362_SELF_TEST_Z_OK : 0;
+    *result = inRange(0.2f, 2.8f, x) ? SNOW_ADXL362_SELF_TEST_X_OK : 0;
+    *result = inRange(-2.8f, -0.2f, y) ? SNOW_ADXL362_SELF_TEST_Y_OK : 0;
+    *result = inRange(0.2f, 2.8f, z) ? SNOW_ADXL362_SELF_TEST_Z_OK : 0;
 
     
 
@@ -377,9 +366,10 @@ struct snow_adxl362_device snow_adxl362_create_device(uint8_t cs_pin, snow_adxl3
     return device;
 }
 
+
 snow_adxl362_ret_code_t nrf_spi_transfer(uint8_t* tx_buf, uint8_t tx_len, uint8_t* rx_buf, uint8_t rx_len, uint8_t cs_pin) {
     nrf_gpio_pin_clear(cs_pin);
-    ret_code_t err_code = nrf_drv_spi_transfer(&m_spi, tx_buf, tx_len, rx_buf, rx_len);
+    ret_code_t err_code = nrf_drv_spi_transfer(m_spi, tx_buf, tx_len, rx_buf, rx_len);
     nrf_gpio_pin_set(cs_pin);
 
     return err_code == NRF_SUCCESS ? SNOW_ADXL362_OK : SNOW_ADXL362_SPI_ERROR;

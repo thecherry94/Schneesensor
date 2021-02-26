@@ -28,7 +28,7 @@
 
 
 //========= MAIN ====================
-void main(void) { // renamed to mainThread() on CCxxyy
+void main(void) { 
     snow_slave_init();
     snow_slave_run();
 }
