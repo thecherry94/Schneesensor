@@ -50,7 +50,7 @@ typedef struct ubx_packet {
     uint8_t id;                                     // Id
     uint16_t len;                                   // Total size
     uint16_t counter;                               // Helper variable for bytes received
-    uint16_t start_spot;
+    uint16_t;
     uint8_t* payload;                               // Data payload
     uint8_t chk_a;                                  // Checksum A
     uint8_t chk_b;                                  // Checksum B
@@ -81,7 +81,7 @@ typedef struct snow_gps_configuration {
 
 // Misc
 //
-#define SNOW_GPS_DATA_BUFFER_SIZE           32
+#define SNOW_GPS_DATA_BUFFER_SIZE           128
 #define UBLOX_BINARY_FLAG_1                 0xB5
 #define UBLOX_BINARY_FLAG_2                 0x62
 
@@ -94,7 +94,9 @@ uint8_t snow_gps_get_position(snow_gps_device* device);
 uint8_t snow_gps_configure(snow_gps_device* device, snow_gps_configuration* cfg);
 uint8_t snow_gps_send_custom_command(snow_gps_device* device, ubx_packet* p);
 
-uint8_t snow_gps_read_data(snow_gps_device* dev, ubx_packet* p, uint8_t requested_cls, uint8_t requested_id);
+uint8_t snow_gps_read_data(snow_gps_device* dev);
+
+uint8_t snow_gps_feed_data(uint8_t cb);
 
 
 

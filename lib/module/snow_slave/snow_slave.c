@@ -193,7 +193,7 @@ void test_gps() {
     snow_gps_init(&gps, &m_twi);
 
     for (;;) {
-        snow_gps_read_data(&gps, NULL);
+        snow_gps_read_data(&gps);
         nrf_delay_ms(100);
     }
 }
