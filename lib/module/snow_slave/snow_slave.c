@@ -193,7 +193,8 @@ void test_gps() {
     snow_gps_init(&gps, &m_twi);
 
     for (;;) {
-        snow_gps_read_data(&gps);
+        //snow_gps_read_data(&gps);
+        snow_gps_request_nmea_package(&gps, MINMEA_SENTENCE_GGA);
         nrf_delay_ms(200);
     }
 }

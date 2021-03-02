@@ -9,6 +9,7 @@
 
 
 #include "nrf_drv_twi.h"
+#include "lib/module/minmea/minmea.h"
 
 
 //
@@ -39,12 +40,12 @@ typedef struct snow_gps_device {
 // Functions
 //
 uint8_t snow_gps_init(snow_gps_device* device, nrf_drv_twi_t* twi);
-uint8_t snow_gps_get_position(snow_gps_device* device);
 uint8_t snow_gps_send_custom_command(snow_gps_device* device, uint8_t* cmd);
 
 uint8_t snow_gps_read_data(snow_gps_device* dev);
 uint8_t snow_gps_on_data_read();
 uint8_t snow_gps_process_nmea_line(uint8_t* line, uint8_t size);
+uint8_t snow_gps_request_nmea_package(snow_gps_device* dev, enum minmea_sentence_id requested_sentence); 
 
 
 
