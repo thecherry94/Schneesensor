@@ -194,7 +194,7 @@ void test_gps() {
 
     for (;;) {
         snow_gps_read_data(&gps);
-        nrf_delay_ms(100);
+        nrf_delay_ms(200);
     }
 }
 

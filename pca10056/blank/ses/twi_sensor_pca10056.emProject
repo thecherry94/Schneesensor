@@ -107,6 +107,10 @@
             <file file_name="../../../lib/module/i2c_handler/i2c_handler.c" />
             <file file_name="../../../lib/module/i2c_handler/i2c_handler.h" />
           </folder>
+          <folder Name="minmea">
+            <file file_name="../../../lib/module/minmea/minmea.c" />
+            <file file_name="../../../lib/module/minmea/minmea.h" />
+          </folder>
         </folder>
       </folder>
     </folder>
