@@ -186,15 +186,13 @@ void test_adxl362() {
 
 
 
-void test_gps() {
-    snow_gps_device gps;
-    
-    gps.i2c_addr = SNOW_GPS_I2C_ADDR;
-    snow_gps_init(&gps, &m_twi);
+void test_gps() {  
+    snow_gps_init(SNOW_GPS_I2C_ADDR, &m_twi);
+    snow_gps_position gps_pos;
 
     for (;;) {
-        //snow_gps_read_data(&gps);
-        snow_gps_request_nmea_package(&gps, MINMEA_SENTENCE_GGA);
+        snow_gps_read_data();
+        snow_gps_get_position(&gps_pos);      
         nrf_delay_ms(200);
     }
 }
