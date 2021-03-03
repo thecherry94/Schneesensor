@@ -67,6 +67,10 @@
 #define     UBX_PCKG_CLASS_ESF              0x10
 
 
+// IDs
+#define UBX_ID_ACK_ACK                     0x01
+#define UBX_ID_ACK_NACK                    0x00
+
 
 
 

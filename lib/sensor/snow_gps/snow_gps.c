@@ -9,6 +9,11 @@ uint8_t m_read_buf[SNOW_GPS_DATA_BUFFER_SIZE+1] = {0};
 
 snow_gps_position m_last_position;
 
+ubx_packet m_last_cfg_packet = {
+    .valid = SNOW_GPS_UBX_PCKG_INVALID;
+};
+bool m_last_cfg_packet_ackn = false;
+
 snow_gps_device m_device;
 
 
@@ -16,6 +21,8 @@ snow_gps_device m_device;
 // 
 // HELPER FUNCTIONS
 //
+
+void process_ubx_packet(ubx_packet* p);
 
 
 void calculate_checksum(ubx_packet* p) {
@@ -165,31 +172,32 @@ uint8_t snow_gps_on_data_read() {
     // NMEA sentence buffer
     uint8_t line[MINMEA_MAX_LENGTH] = {0};
 
-    enum snow_gps_current_sentence current_sentence;
-
-    // Check the first character whether it's a $ or µ(b) to specify the protocol
-    // TODO make this a separate function
-    switch (*cb) {
-        case '$': {
-            current_sentence = SNOW_GPS_SENTENCE_NMEA;
-        } break;
-        case SNOW_GPS_UBX_1: {
-            // Check next character just to make sure 
-            if (*(cb+1) == SNOW_GPS_UBX_2) 
-                current_sentence = SNOW_GPS_SENTENCE_UBX;
-            else 
-                current_sentence = SNOW_GPS_SENTENCE_UNKNOWN;
-        } break;
-        default: {
-            current_sentence = SNOW_GPS_SENTENCE_UNKNOWN;
-        } break;
-    };
+    enum snow_gps_current_sentence current_sentence = SNOW_GPS_SENTENCE_UNKNOWN;
 
     // Loop through the entire read data buffer until string terminator
     //
     while (*cb) {
 
-        // TODO Implement sentence check for each iteration (the current sentence check above could be entirely put into this spot inside the loop)
+        // Check the first character whether it's a $ or µ(b) to specify the protocol
+        // TODO make this a separate function
+
+        if (current_sentence == SNOW_GPS_SENTENCE_UNKNOWN) {
+            switch (*cb) {
+                case '$': {
+                    current_sentence = SNOW_GPS_SENTENCE_NMEA;
+                } break;
+                case SNOW_GPS_UBX_1: {
+                    // Check next character just to make sure 
+                    if (*(cb+1) == SNOW_GPS_UBX_2) 
+                        current_sentence = SNOW_GPS_SENTENCE_UBX;
+                    else 
+                        current_sentence = SNOW_GPS_SENTENCE_UNKNOWN;
+                } break;
+                default: {
+                    current_sentence = SNOW_GPS_SENTENCE_UNKNOWN;
+                } break;
+            };
+        }
 
         if (current_sentence == SNOW_GPS_SENTENCE_NMEA) {
             // Check for "\r\n" indicating the end of a NMEA sentence
@@ -213,7 +221,34 @@ uint8_t snow_gps_on_data_read() {
                 snow_gps_process_nmea_line(line, MINMEA_MAX_LENGTH);         
             }
         } else if (current_sentence == SNOW_GPS_SENTENCE_UBX) {
+            // Skip the sync characters of the UBX packet
+            cb += 2;
+
+            // Feed received bytes into a ubx packet structure
+            //
+            ubx_packet p;
+            p.cls = cb++;
+            p.id = cb++;
+            p.len = cb++ & 0x0F;
+            p.len |= cb++ << 8;
+
+            p.payload = (uint8_t*)malloc(p.len);
+            for (int i = 0; i < p.len; i++)
+                p.payload[i] = cb++;
             
+            p.chksm_a = cb++;
+            p.chksm_b = cb++;
+
+            // Verify validity
+            verify_checksum(&p);
+
+
+            if (p.valid == SNOW_GPS_UBX_PCKG_VALID) {
+                // Data valid; do stuff 
+                process_ubx_packet(&p);
+            } else {
+                // Checksum mismatch; ignore packet
+            }
         }
         
         // Increase control variables
@@ -323,4 +358,45 @@ uint8_t snow_gps_send_custom_command(ubx_packet* p) {
     #endif
 
     return err_code;
+}
+
+
+void process_ubx_packet(ubx_packet* p) {                 
+    if (p->cls == UBX_PCKG_CLASS_ACK) {
+    // Only CFG class messages are acknowledged (that means the GNSS module is supposed to reply with a CFG packet very soon if we sent a CFG poll request)
+        if (p->id == UBX_ID_ACK_ACK) {
+            // The CFG packet was acknowledged
+            // Do stuff
+        } else if (p->id == UBX_ID_ACK_NACK) {
+            // The CFG packet was not acknowledged
+            // Maybe do stuff
+        }
+    } else if (p->cls == UBX_PCKG_CLASS_CFG) {
+        // Received a config package
+        //
+    } else if (p->cls == UBX_PCKG_CLASS_AID) {
+        // Received an AssistNow aiding package
+        //
+    } else if (p->cls == UBX_PCKG_CLASS_ESF) {
+        // Received a external sensor fusion package
+        //
+    } else if (p->cls == UBX_PCKG_CLASS_INF) {
+        // Received an information message package
+        //
+    } else if (p->cls == UBX_PCKG_CLASS_MON) {
+        // Received a monitoring message package
+        //
+    } else if (p->cls == UBX_PCKG_CLASS_NAV) {
+        // Received a navigation result package
+        //
+    } else if (p->cls == UBX_PCKG_CLASS_RXM) {
+        // Received a receiver manager message package
+        //
+    } else if (p->cls == UBX_PCKG_CLASS_TIM) {
+        // Received a timing message package
+        //
+    } else {
+        // Unknown package class
+        //
+    }
 }
