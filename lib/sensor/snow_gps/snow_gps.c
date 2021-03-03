@@ -12,9 +12,59 @@ snow_gps_position m_last_position;
 snow_gps_device m_device;
 
 
-// TODO 
-// - Implement wake / sleep state
 
+// 
+// HELPER FUNCTIONS
+//
+
+
+void calculate_checksum(ubx_packet* p) {
+    uint8_t a = 0;
+    uint8_t b = 0;
+
+    a += p->cls;
+    b += a;
+
+    a += p->id;
+    b += a;
+
+    a += p->len;
+    b += a;
+
+    for (int i = 0; i < p->len; i++) {
+        a += p->payload[i];
+        b += a;
+    }
+
+    p->chksm_a = a;
+    p->chksm_b = b;
+    p->valid = SNOW_GPS_UBX_PCKG_VALID;
+}
+
+
+bool verify_checksum(ubx_packet* p) {
+    p->valid = SNOW_GPS_UBX_PCKG_VALIDITY_UNCONFIRMED;
+
+    uint8_t a = p->chksm_a;
+    uint8_t b = p->chksm_b;
+
+    calculate_checksum(p);
+
+    if (a == p->chksm_a && b == p->chksm_b) {
+        p->valid = SNOW_GPS_UBX_PCKG_VALID;
+        return true;
+    }
+
+    p->chksm_a = a;
+    p->chksm_b = b;
+    return false;
+}
+
+
+
+// 
+// MODULE FUNCTIONS
+//
 
 
 uint8_t snow_gps_init(uint8_t i2c_addr, nrf_drv_twi_t* twi) {
@@ -92,7 +142,7 @@ uint8_t snow_gps_read_data() {
 
     //printf("%s\n\n", m_read_buf);
 
-    // Processing of received data
+    // Process received data
     snow_gps_on_data_read();
 
     return 0;
@@ -105,11 +155,12 @@ uint8_t snow_gps_read_data() {
 // - Implement possibility to differentiate between NMEA and UBX protocol. At the moment only the NMEA protocol is supported but 
 //   the configuration of the module is only possible via the UBX protocol.
 uint8_t snow_gps_on_data_read() {
-    uint8_t* cb = m_read_buf;
+    uint8_t* cb = m_read_buf;   // pointer to first entry of read buffer
 
-    uint16_t start = 0;
-    uint16_t end = 0;
-    uint16_t loc = 0;
+    // Control variables for processing of entire read buffer
+    uint16_t start = 0;         // start of the current sentence being processed
+    uint16_t end = 0;           // end  of the current sentence being processed
+    uint16_t loc = 0;           // current pointer offset location on the read buffer
 
     // NMEA sentence buffer
     uint8_t line[MINMEA_MAX_LENGTH] = {0};
@@ -124,14 +175,13 @@ uint8_t snow_gps_on_data_read() {
         } break;
         case SNOW_GPS_UBX_1: {
             // Check next character just to make sure 
-            if (*(cb+1) == SNOW_GPS_UBX_2) {
+            if (*(cb+1) == SNOW_GPS_UBX_2) 
                 current_sentence = SNOW_GPS_SENTENCE_UBX;
-            } else {
-                // TODO ERROR
-            }
+            else 
+                current_sentence = SNOW_GPS_SENTENCE_UNKNOWN;
         } break;
         default: {
-            // TODO Unexpected message start
+            current_sentence = SNOW_GPS_SENTENCE_UNKNOWN;
         } break;
     };
 
@@ -139,12 +189,12 @@ uint8_t snow_gps_on_data_read() {
     //
     while (*cb) {
 
-        // TODO The current sentence check above could be entirely put into this spot inside the loop
+        // TODO Implement sentence check for each iteration (the current sentence check above could be entirely put into this spot inside the loop)
 
         if (current_sentence == SNOW_GPS_SENTENCE_NMEA) {
             // Check for "\r\n" indicating the end of a NMEA sentence
             if (*cb == '\n' && *(cb-1) == '\r') {
-                // Unnecessary yet kept for clarities sake
+                // Unnecessary yet kept for clarity's sake
                 end = loc;
 
                 // NMEA sentence length
@@ -162,6 +212,8 @@ uint8_t snow_gps_on_data_read() {
                 // Process the single NMEA sentence
                 snow_gps_process_nmea_line(line, MINMEA_MAX_LENGTH);         
             }
+        } else if (current_sentence == SNOW_GPS_SENTENCE_UBX) {
+            
         }
         
         // Increase control variables
@@ -235,4 +287,40 @@ uint8_t snow_gps_process_nmea_line(uint8_t* line, uint8_t size) {
 
 void snow_gps_get_position(snow_gps_position* pos) {
     *pos = m_last_position;
+}
+
+
+// Sends a custom command to the ublox GNSS module
+//
+uint8_t snow_gps_send_custom_command(ubx_packet* p) {
+    calculate_checksum(p);
+    ret_code_t err_code;
+
+    // Allocate memory for the transmission buffer
+    uint8_t tx_len = UBX_PCKG_MIN_LEN + p->len;
+    uint8_t* tx_buf = (uint8_t*)malloc(tx_len);
+
+    // Feed package information into the transmission buffer
+    //
+    tx_buf[0] = SNOW_GPS_UBX_1;
+    tx_buf[1] = SNOW_GPS_UBX_2;
+    tx_buf[2] = p->cls;
+    tx_buf[3] = p->id;
+    tx_buf[4] = p->len & 0x0F;
+    tx_buf[5] = p->len >> 8;
+
+    for (int i = 0; i < len; i++) 
+        tx_buf[6+i] = p->payload[i];
+    
+    tx_buf[6+p->len] = p->chksm_a;
+    tx_buf[7+p->len] = p->chksm_b;
+
+    // Send package
+    err_code = nrf_drv_twi_tx(&m_twi, m_device.i2c_addr, tx_buf, tx_len, false);
+
+    #ifdef __DEBUG__
+    printf("Custom UBX package failed to sent!\n");
+    #endif
+
+    return err_code;
 }
