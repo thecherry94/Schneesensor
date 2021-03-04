@@ -197,11 +197,11 @@ uint8_t snow_gps_on_data_read() {
                     current_sentence = SNOW_GPS_SENTENCE_UNKNOWN;
                 } break;
             };
-        }
-
-        if (current_sentence == SNOW_GPS_SENTENCE_NMEA) {
+        } else if (current_sentence == SNOW_GPS_SENTENCE_NMEA) {
             // Check for "\r\n" indicating the end of a NMEA sentence
             if (*cb == '\n' && *(cb-1) == '\r') {
+                // TODO add check for invalid NMEA sentence
+
                 // Unnecessary yet kept for clarity's sake
                 end = loc;
 
@@ -237,7 +237,7 @@ uint8_t snow_gps_on_data_read() {
                 p.payload[i] = cb++;
             
             p.chksm_a = cb++;
-            p.chksm_b = cb++;
+            p.chksm_b = cb;
 
             // Verify validity
             verify_checksum(&p);
@@ -249,6 +249,9 @@ uint8_t snow_gps_on_data_read() {
             } else {
                 // Checksum mismatch; ignore packet
             }
+
+            // Put location control variable at the current spot
+            loc += UBX_PCKG_MIN_LEN + p.len;
         }
         
         // Increase control variables
