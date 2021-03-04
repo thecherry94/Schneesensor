@@ -101,7 +101,6 @@ typedef struct snow_gps_device {
 // latitude, longitude <=> GNSS position
 // speed <=> surface speed
 // date, time <=> date and time when record was taken
-// valid <=> data reliability check
 //
 typedef struct snow_gps_position_information {
     float latitude;
@@ -109,8 +108,8 @@ typedef struct snow_gps_position_information {
     float speed;
     struct minmea_date date;
     struct minmea_time time;
-    enum snow_gps_ubx_packet_validity;
-} snow_gps_position;
+    bool valid;
+} snow_gps_position_information;
 
 
 // Structure to hold UBX protocol package information for sending and receiving configuration options
@@ -144,7 +143,9 @@ uint8_t snow_gps_read_data();
 uint8_t snow_gps_on_data_read();
 uint8_t snow_gps_process_nmea_line(uint8_t* line, uint8_t size);
 
-void snow_gps_get_position(snow_gps_position* pos);
+void snow_gps_get_position(snow_gps_position_information* pos);
+
+void calculate_checksum(ubx_packet* p);
 
 
 //

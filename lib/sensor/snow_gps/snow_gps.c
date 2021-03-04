@@ -7,10 +7,10 @@
 nrf_drv_twi_t* m_twi;
 uint8_t m_read_buf[SNOW_GPS_DATA_BUFFER_SIZE+1] = {0};
 
-snow_gps_position m_last_position;
+snow_gps_position_information m_last_position;
 
 ubx_packet m_last_cfg_packet = {
-    .valid = SNOW_GPS_UBX_PCKG_INVALID;
+    .valid = SNOW_GPS_UBX_PCKG_INVALID
 };
 bool m_last_cfg_packet_ackn = false;
 
@@ -38,10 +38,18 @@ void calculate_checksum(ubx_packet* p) {
     a += p->len;
     b += a;
 
+    uint8_t i = 0;
+    do {
+        a += p->payload[i];
+        b += a;
+        i++;
+    } while(i < p->len);
+
+    /*
     for (int i = 0; i < p->len; i++) {
         a += p->payload[i];
         b += a;
-    }
+    }*/
 
     p->chksm_a = a;
     p->chksm_b = b;
@@ -197,7 +205,9 @@ uint8_t snow_gps_on_data_read() {
                     current_sentence = SNOW_GPS_SENTENCE_UNKNOWN;
                 } break;
             };
-        } else if (current_sentence == SNOW_GPS_SENTENCE_NMEA) {
+        }  
+        
+        if (current_sentence == SNOW_GPS_SENTENCE_NMEA) {
             // Check for "\r\n" indicating the end of a NMEA sentence
             if (*cb == '\n' && *(cb-1) == '\r') {
                 // TODO add check for invalid NMEA sentence
@@ -218,7 +228,9 @@ uint8_t snow_gps_on_data_read() {
                 start = end + 1;
         
                 // Process the single NMEA sentence
-                snow_gps_process_nmea_line(line, MINMEA_MAX_LENGTH);         
+                snow_gps_process_nmea_line(line, MINMEA_MAX_LENGTH);   
+                      
+                current_sentence = SNOW_GPS_SENTENCE_UNKNOWN;
             }
         } else if (current_sentence == SNOW_GPS_SENTENCE_UBX) {
             // Skip the sync characters of the UBX packet
@@ -227,17 +239,23 @@ uint8_t snow_gps_on_data_read() {
             // Feed received bytes into a ubx packet structure
             //
             ubx_packet p;
-            p.cls = cb++;
-            p.id = cb++;
-            p.len = cb++ & 0x0F;
-            p.len |= cb++ << 8;
+            p.cls = *(cb++);
+            p.id = *(cb++);
+            p.len = *(cb++) & 0x0F;
+            p.len |= *(cb++) << 8;
+
+            // Sometimes the packet length is huge (>10000) for some reason but not always
+            // Set a breakpoint here in case this happens again
+            if (p.len > 100) {
+                volatile int ok = 0;
+            }
 
             p.payload = (uint8_t*)malloc(p.len);
             for (int i = 0; i < p.len; i++)
-                p.payload[i] = cb++;
+                p.payload[i] = *(cb++);
             
-            p.chksm_a = cb++;
-            p.chksm_b = cb;
+            p.chksm_a = *(cb++);
+            p.chksm_b = *cb;
 
             // Verify validity
             verify_checksum(&p);
@@ -252,9 +270,11 @@ uint8_t snow_gps_on_data_read() {
 
             // Put location control variable at the current spot
             loc += UBX_PCKG_MIN_LEN + p.len;
+
+            current_sentence = SNOW_GPS_SENTENCE_UNKNOWN;
         }
         
-        // Increase control variables
+        // Move to beginning of next sentence
         cb++;
         loc++;
     }
@@ -323,7 +343,7 @@ uint8_t snow_gps_process_nmea_line(uint8_t* line, uint8_t size) {
 }
 
 
-void snow_gps_get_position(snow_gps_position* pos) {
+void snow_gps_get_position(snow_gps_position_information* pos) {
     *pos = m_last_position;
 }
 
@@ -347,17 +367,18 @@ uint8_t snow_gps_send_custom_command(ubx_packet* p) {
     tx_buf[4] = p->len & 0x0F;
     tx_buf[5] = p->len >> 8;
 
-    for (int i = 0; i < len; i++) 
+    for (int i = 0; i < p->len; i++) 
         tx_buf[6+i] = p->payload[i];
     
     tx_buf[6+p->len] = p->chksm_a;
     tx_buf[7+p->len] = p->chksm_b;
 
     // Send package
-    err_code = nrf_drv_twi_tx(&m_twi, m_device.i2c_addr, tx_buf, tx_len, false);
+    err_code = nrf_drv_twi_tx(m_twi, m_device.i2c_addr, tx_buf, tx_len, false);
 
-    #ifdef __DEBUG__
-    printf("Custom UBX package failed to sent!\n");
+    #ifdef __DEBUG_
+    if (err_code != NRF_SUCCESS)_
+        printf("Custom UBX package failed to sent!\n");
     #endif
 
     return err_code;
@@ -368,11 +389,9 @@ void process_ubx_packet(ubx_packet* p) {
     if (p->cls == UBX_PCKG_CLASS_ACK) {
     // Only CFG class messages are acknowledged (that means the GNSS module is supposed to reply with a CFG packet very soon if we sent a CFG poll request)
         if (p->id == UBX_ID_ACK_ACK) {
-            // The CFG packet was acknowledged
-            // Do stuff
+            volatile int yay = 0;
         } else if (p->id == UBX_ID_ACK_NACK) {
-            // The CFG packet was not acknowledged
-            // Maybe do stuff
+            volatile int reeeee = 0;
         }
     } else if (p->cls == UBX_PCKG_CLASS_CFG) {
         // Received a config package
