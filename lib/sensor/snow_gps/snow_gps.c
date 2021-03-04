@@ -138,11 +138,7 @@ uint8_t snow_gps_read_data() {
         //printf("\n\nBytes available: %d\n", bytes_available);
 
         // Determine chunk size
-        if (bytes_available > SNOW_GPS_DATA_CHUNK_SIZE) {
-            bytes_received = SNOW_GPS_DATA_CHUNK_SIZE;               
-        } else {          
-            bytes_received = bytes_available;
-        }
+        bytes_received = bytes_available > SNOW_GPS_DATA_CHUNK_SIZE ? SNOW_GPS_DATA_CHUNK_SIZE : bytes_available;
         
         // Read a chunk of data
         err_code = nrf_drv_twi_rx(m_twi, m_device.i2c_addr, m_read_buf + read_buf_cnt, bytes_received);
@@ -185,10 +181,6 @@ uint8_t snow_gps_on_data_read() {
     // Loop through the entire read data buffer until string terminator
     //
     while (*cb) {
-
-        // Check the first character whether it's a $ or µ(b) to specify the protocol
-        // TODO make this a separate function
-
         if (current_sentence == SNOW_GPS_SENTENCE_UNKNOWN) {
             switch (*cb) {
                 case '$': {
@@ -206,7 +198,7 @@ uint8_t snow_gps_on_data_read() {
                 } break;
             };
         }  
-        
+     
         if (current_sentence == SNOW_GPS_SENTENCE_NMEA) {
             // Check for "\r\n" indicating the end of a NMEA sentence
             if (*cb == '\n' && *(cb-1) == '\r') {
@@ -230,6 +222,7 @@ uint8_t snow_gps_on_data_read() {
                 // Process the single NMEA sentence
                 snow_gps_process_nmea_line(line, MINMEA_MAX_LENGTH);   
                       
+                // Reset sentence
                 current_sentence = SNOW_GPS_SENTENCE_UNKNOWN;
             }
         } else if (current_sentence == SNOW_GPS_SENTENCE_UBX) {
@@ -260,7 +253,6 @@ uint8_t snow_gps_on_data_read() {
             // Verify validity
             verify_checksum(&p);
 
-
             if (p.valid == SNOW_GPS_UBX_PCKG_VALID) {
                 // Data valid; do stuff 
                 process_ubx_packet(&p);
@@ -268,9 +260,8 @@ uint8_t snow_gps_on_data_read() {
                 // Checksum mismatch; ignore packet
             }
 
-            // Put location control variable at the current spot
+            // Put location control variable at the current spot and reset sentence
             loc += UBX_PCKG_MIN_LEN + p.len;
-
             current_sentence = SNOW_GPS_SENTENCE_UNKNOWN;
         }
         
@@ -350,7 +341,7 @@ void snow_gps_get_position(snow_gps_position_information* pos) {
 
 // Sends a custom command to the ublox GNSS module
 //
-uint8_t snow_gps_send_custom_command(ubx_packet* p) {
+uint8_t snow_gps_send_command(ubx_packet* p) {
     calculate_checksum(p);
     ret_code_t err_code;
 

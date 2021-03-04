@@ -8,13 +8,12 @@
 //
 
 // TODO Primary
-// - Implement checksum calculation
 // - Implement UBX protocol (?) => partially implement most important configuration packets
 // - Implement wake / sleep state
 // - Implement error checks and error values everywhere
 
 // TODO Secondary
-// - Implement support for multiple modules at the same
+// - Implement support for multiple modules running at the same time
 
 
 
@@ -137,7 +136,7 @@ typedef struct ubx_packet {
 // Functions
 //
 uint8_t snow_gps_init(uint8_t i2c_addr, nrf_drv_twi_t* twi);
-uint8_t snow_gps_send_custom_command(ubx_packet* p);
+uint8_t snow_gps_send_command(ubx_packet* p);
 
 uint8_t snow_gps_read_data();
 uint8_t snow_gps_on_data_read();

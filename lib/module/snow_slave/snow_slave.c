@@ -193,12 +193,12 @@ void test_gps() {
     for (;;) {
         ubx_packet p = {
             .cls = 0x06,
-            .id = 0x32,
+            .id = 0x24,
             .len = 0
         };
 
         calculate_checksum(&p);
-        snow_gps_send_custom_command(&p);
+        snow_gps_send_command(&p);
         snow_gps_read_data();
         snow_gps_get_position(&gps_pos);      
         nrf_delay_ms(200);
