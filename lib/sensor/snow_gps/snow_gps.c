@@ -10,6 +10,9 @@ uint8_t m_read_buf[SNOW_GPS_DATA_BUFFER_SIZE+1] = {0};
 snow_gps_position_information m_current_position;
 bool m_position_updated = false;
 
+uint8_t m_last_cfg_poll = 0;
+uint8_t m_last_cfg_sent = 0;
+
 ubx_packet m_last_cfg_packet = {
     .valid = SNOW_GPS_UBX_PCKG_INVALID
 };
@@ -382,6 +385,14 @@ uint8_t snow_gps_send_command(ubx_packet* p) {
         printf("Custom UBX package failed to sent!\n");
     #endif
 
+    // Reset cfg poll/sent control variable in case the message was not sent
+    if (p->cls == UBX_PCKG_CLASS_ACK && err_code != NRF_SUCCESS) {
+        if (p->len == 0)
+            m_last_cfg_poll = 0;
+        else
+            m_last_cfg_sent = 0;
+    }
+
     return err_code;
 }
 
@@ -428,6 +439,11 @@ void process_ubx_packet(ubx_packet* p) {
 // Sends power management configuration to the GNSS module
 //
 uint8_t snow_gps_configure_power_management(snow_gps_power_configuration* cfg) {
+
+    // For now only allow another cfg package after the last one was acknowledged
+    if (m_last_cfg_sent != 0)
+        return 0;
+
     ubx_packet p;
     p.cls = UBX_PCKG_CLASS_CFG;
     p.id = UBX_PCKG_ID_CFG_PM2;
@@ -463,5 +479,8 @@ uint8_t snow_gps_configure_power_management(snow_gps_power_configuration* cfg) {
     if (cfg->mode == SNOW_GPS_PWM_MODE_CYCLIC)
         p.payload[3] |= 0x02;
     
+    // Update current cfg package being sent
+    m_last_cfg_sent = UBX_PCKG_ID_CFG_PM2;
+
     return snow_gps_send_command(&p);
 }
