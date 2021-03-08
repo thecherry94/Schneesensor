@@ -66,11 +66,27 @@
 #define     UBX_PCKG_CLASS_ESF              0x10
 
 
+
+
+
+
 // IDs
-#define UBX_ID_ACK_ACK                     0x01
-#define UBX_ID_ACK_NACK                    0x00
+#define     UBX_ID_ACK_ACK                  0x01
+#define     UBX_ID_ACK_NACK                 0x00
+#define     UBX_PCKG_ID_CFG_PM2             0x3B      // Extended power management configuration
 
 
+
+typedef struct snow_gps_power_configuration {
+    uint8_t ext_int_pin;            // 0 = extint0; 1 = extint1
+    bool ext_int_wake;
+    bool ext_int_backup;
+    bool wait_time_fix;
+    bool update_rtc;
+    bool update_eph;
+    bool do_not_enter_off;
+    uint8_t mode;                   // 0 = on/off operation; 1 = cyclic tracking operation
+} snow_gps_power_configuration;
 
 
 
@@ -142,7 +158,9 @@ uint8_t snow_gps_read_data();
 uint8_t snow_gps_on_data_read();
 uint8_t snow_gps_process_nmea_line(uint8_t* line, uint8_t size);
 
-void snow_gps_get_position(snow_gps_position_information* pos);
+uint8_t snow_gps_configure_power_management(snow_gps_power_configuration* cfg);
+
+bool snow_gps_get_position(snow_gps_position_information* pos);
 
 void calculate_checksum(ubx_packet* p);
 
