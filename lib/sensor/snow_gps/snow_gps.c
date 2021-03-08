@@ -423,3 +423,45 @@ void process_ubx_packet(ubx_packet* p) {
         //
     }
 }
+
+
+// Sends power management configuration to the GNSS module
+//
+uint8_t snow_gps_configure_power_management(snow_gps_power_configuration* cfg) {
+    ubx_packet p;
+    p.cls = UBX_PCKG_CLASS_CFG;
+    p.id = UBX_PCKG_ID_CFG_PM2;
+    p.len = UBX_PCKG_CFG_PM2_LEN;
+
+    p.payload = (uint8_t*)malloc(UBX_PCKG_CFG_PM2_LEN);
+    memset(p.payload, 0, UBX_PCKG_CFG_PM2_LEN);
+
+    if (cfg->ext_int_pin == 1)
+        p.payload[0] |= 0x10;
+    
+    if (cfg->ext_int_wake) 
+        p.payload[0] |= 0x20;
+    
+    if (cfg->ext_int_backup)
+        p.payload[0] |= 0x40;
+
+    if (cfg->limit_current)
+        p.payload[1] |= 0x01;
+    
+    if (cfg->wait_time_fix) 
+        p.payload[2] |= 0x04;
+    
+    if (cfg->update_rtc)
+        p.payload[2] |= 0x08;
+
+    if (cfg->update_eph)
+        p.payload[2] |= 0x10;
+    
+    if (cfg->do_not_enter_off)
+        p.payload[3] |= 0x01;
+    
+    if (cfg->mode == SNOW_GPS_PWM_MODE_CYCLIC)
+        p.payload[3] |= 0x02;
+    
+    return snow_gps_send_command(&p);
+}
