@@ -63,7 +63,7 @@ uint8_t snow_slave_init() {
 
 uint8_t snow_slave_run() {
     #ifdef __DEBUG__
-    test_gps();
+    test_everything();
     #endif
 }
 
@@ -191,6 +191,7 @@ void test_gps() {
     snow_gps_position_information gps_pos;
 
     for (;;) {
+        /*
         ubx_packet p = {
             .cls = 0x06,
             .id = 0x24,
@@ -199,9 +200,15 @@ void test_gps() {
 
         calculate_checksum(&p);
         snow_gps_send_command(&p);
+        */
+
         snow_gps_read_data();
         snow_gps_get_position(&gps_pos);      
-        nrf_delay_ms(200);
+
+        
+        printf("Data valid: %s\nLongitude: %f°; Latitude: %f°\nTime: %02d:%02d:%02d\n\n", gps_pos.valid ? "yes" : "no", gps_pos.longitude, gps_pos.latitude, gps_pos.time.hours, gps_pos.time.minutes, gps_pos.time.seconds);
+
+        nrf_delay_ms(1000);
     }
 }
 
@@ -244,6 +251,12 @@ void test_everything() {
     struct bme680_field_data data;
     snow_accl_xyz_t accl = {0};
     float temp = 0;
+
+    // Init GPS
+    snow_gps_init(SNOW_GPS_I2C_ADDR, &m_twi);
+    snow_gps_position_information gps_pos;
+
+
     for (;;) {
         snow_adxl362_read_accl(&device, &accl);
         snow_adxl362_read_temp(&device, &temp);
@@ -257,11 +270,17 @@ void test_everything() {
         //snow_adxl362_perform_self_test(&device, &test, 16);
 
         snow_bme680_measure(&bme, &data);
+        snow_gps_read_data();
+        snow_gps_get_position(&gps_pos);
         
         printf("BME680   \t=> T: %.2f degC, P: %.2f hPa, H: %.2f %%rH\n\n", data.temperature / 100.0f,
             data.pressure / 100.0f, data.humidity / 1000.0f);
         
-        nrf_delay_ms(100);
+              
+    
+        printf("GPS\nData valid: %s\nLongitude: %f°; Latitude: %f°\nTime: %02d:%02d:%02d\n\n", gps_pos.valid ? "yes" : "no", gps_pos.longitude, gps_pos.latitude, gps_pos.time.hours, gps_pos.time.minutes, gps_pos.time.seconds);
+
+        nrf_delay_ms(1000);
     }
 }
 

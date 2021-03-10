@@ -93,7 +93,7 @@ uint8_t snow_gps_init(uint8_t i2c_addr, nrf_drv_twi_t* twi) {
         m_twi = twi;
     }
 
-    m_last_position.valid = false;
+    m_current_position.valid = false;
 
     return NRF_SUCCESS;
 }

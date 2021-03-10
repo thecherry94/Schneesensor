@@ -6,6 +6,14 @@
 #include <string.h>
 
 
+/* BL654 PINS
+ * I²C
+ * SCL = 27; SDA = 26
+ * SPI
+ * SCK = 41; MOSI = 40; MISO = 04
+ */
+
+
 
 
 /* INCLUDES */

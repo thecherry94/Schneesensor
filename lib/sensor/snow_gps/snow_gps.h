@@ -11,6 +11,7 @@
 // - Implement UBX protocol (?) => partially implement most important configuration packets
 // - Implement wake / sleep state
 // - Implement error checks and error values everywhere
+// - Implement a neat way for event handling and requesting packets
 
 // TODO Secondary
 // - Implement support for multiple modules running at the same time
