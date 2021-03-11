@@ -228,6 +228,11 @@ void ble_gps_service_position_update(ble_gps_t* sh, snow_gps_position_informatio
         uint32_t longitude = *(uint32_t*)(&gps_info->longitude);
         uint32_t latitude = *(uint32_t*)(&gps_info->latitude);
 
+        uint8_t* test =  (uint8_t*)(&gps_info->longitude);
+        for (int i = 0; i < len / 2; i++) 
+            *(data++) = *(test++);
+
+
         // Put longitude into the send buffer
         for (int i = 0; i < len / 2; i++) 
             data[i] = (uint8_t)(longitude >> (i * 8));
