@@ -26,9 +26,8 @@
   <ProjectSessionItem path="twi_sensor_pca10056;twi_sensor_pca10056;Application"/>
   <ProjectSessionItem path="twi_sensor_pca10056;twi_sensor_pca10056;Application;lib"/>
   <ProjectSessionItem path="twi_sensor_pca10056;twi_sensor_pca10056;Application;lib;module"/>
-  <ProjectSessionItem path="twi_sensor_pca10056;twi_sensor_pca10056;Application;lib;module;i2c_handler"/>
+  <ProjectSessionItem path="twi_sensor_pca10056;twi_sensor_pca10056;Application;lib;module;bluetooth"/>
   <ProjectSessionItem path="twi_sensor_pca10056;twi_sensor_pca10056;Application;lib;module;snow_slave"/>
-  <ProjectSessionItem path="twi_sensor_pca10056;twi_sensor_pca10056;Application;lib;module;spi_handler"/>
   <ProjectSessionItem path="twi_sensor_pca10056;twi_sensor_pca10056;Application;lib;sensor"/>
   <ProjectSessionItem path="twi_sensor_pca10056;twi_sensor_pca10056;Application;lib;sensor;snow_adxl362"/>
   <ProjectSessionItem path="twi_sensor_pca10056;twi_sensor_pca10056;Application;lib;sensor;snow_bme680"/>
@@ -74,7 +73,7 @@
  <Files>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="28" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../lib/sensor/snow_bme680/snow_bme680.h" selected="0" top="0" codecName="UTF-8"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="90" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../lib/sensor/snow_bme680/snow_bme680.c" selected="0" top="78" codecName="UTF-8"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="485" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../lib/sensor/snow_gps/snow_gps.c" selected="0" top="473" codecName="UTF-8"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="414" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../lib/sensor/snow_gps/snow_gps.c" selected="0" top="414" codecName="UTF-8"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="209" useTextEdit="1" openedFrom="C:/nordic/nRF5_SDK_17.0.2_d674dde/own_projects/eigene/Schneesensor/lib/module/snow_slave/snow_slave.c" useBinaryEdit="0" left="0" path="../../../lib/sensor/snow_adxl362/snow_adxl362.c" selected="0" top="42" codecName="UTF-8"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="507" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../../../../integration/nrfx/legacy/nrf_drv_spi.h" selected="0" top="490" codecName="UTF-8"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="297" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../../../../components/libraries/balloc/nrf_balloc.c" selected="0" top="268" codecName="UTF-8"/>
@@ -88,8 +87,12 @@
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="543" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../../../../modules/nrfx/drivers/src/nrfx_twim.c" selected="0" top="519" codecName="UTF-8"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="31" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="main.c" selected="0" top="0" codecName="UTF-8"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="67" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../lib/module/snow_slave/snow_slave.h" selected="0" top="60" codecName="UTF-8"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="159" useTextEdit="1" openedFrom="C:/nordic/nRF5_SDK_17.0.2_d674dde/own_projects/eigene/Schneesensor/pca10056/blank/ses/main.c" useBinaryEdit="0" left="0" path="../../../lib/module/snow_slave/snow_slave.c" selected="1" top="126" codecName="UTF-8"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="160" useTextEdit="1" openedFrom="C:/nordic/nRF5_SDK_17.0.2_d674dde/own_projects/eigene/Schneesensor/pca10056/blank/ses/main.c" useBinaryEdit="0" left="0" path="../../../lib/module/snow_slave/snow_slave.c" selected="0" top="141" codecName="UTF-8"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="445" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../../../../modules/nrfx/hal/nrf_twim.h" selected="0" top="421" codecName="UTF-8"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="31" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../lib/module/bluetooth/ble_gps_service.c" selected="0" top="0" codecName="UTF-8"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="3" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../lib/module/bluetooth/ble_gps_service.h" selected="1" top="0" codecName="UTF-8"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="3" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../lib/module/bluetooth/ble_defs.h" selected="0" top="0" codecName="UTF-8"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="6" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../lib/sensor/snow_gps/snow_gps.h" selected="0" top="0" codecName="UTF-8"/>
  </Files>
  <ARMCrossStudioWindow activeProject="twi_sensor_pca10056" fileDialogDefaultFilter="*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx" autoConnectTarget="J-Link" buildConfiguration="Release" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="C:/nordic/nRF5_SDK_17.0.2_d674dde/own_projects/eigene/Schneesensor/lib/module/i2c_handler" debugSearchPath="" autoConnectCapabilities="3199"/>
 </session>
