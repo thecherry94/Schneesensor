@@ -221,7 +221,20 @@ void ble_gps_service_position_update(ble_gps_t* sh, snow_gps_position_informatio
 
         uint8_t data[len] = {0};
 
-        // TODO prepare data
+        // Prepare data
+        // TODO Leon protip -> uint8_t* benutzen und pointer hochzählen
+
+        // Copy the bits of the floats one-to-one into integers to preserve the information without converting
+        uint32_t longitude = *(uint32_t*)(&gps_info->longitude);
+        uint32_t latitude = *(uint32_t*)(&gps_info->latitude);
+
+        // Put longitude into the send buffer
+        for (int i = 0; i < len / 2; i++) 
+            data[i] = (uint8_t)(longitude >> (i * 8));
+        
+        // Put latitude into the send buffer
+        for (int i = 0; i < len / 2; i++) 
+            data[i+len/2] = (uint8_t)(latitude >> (i * 8));
 
         hvx_params.handle = sh->chs_position.value_handle;
         hvx_params.type = BLE_GATT_HVX_NOTIFICATION;
@@ -242,7 +255,10 @@ void ble_gps_service_time_update(ble_gps_t* sh, snow_gps_position_information* g
 
         uint8_t data[len] = {0};
 
-        // TODO prepare data
+        // prepare data
+        data[0] = (uint8_t)gps_info->time.hours;
+        data[1] = (uint8_t)gps_info->time.minutes;
+        data[2] = (uint8_t)gps_info->time.seconds;
 
         hvx_params.handle = sh->chs_position.value_handle;
         hvx_params.type = BLE_GATT_HVX_NOTIFICATION;
@@ -263,7 +279,10 @@ void ble_gps_service_date_update(ble_gps_t* sh, snow_gps_position_information* g
 
         uint8_t data[len] = {0};
 
-        // TODO prepare data
+        // prepare data
+        data[0] = (uint8_t)gps_info->date.year;
+        data[1] = (uint8_t)gps_info->date.month;
+        data[2] = (uint8_t)gps_info->date.day;
 
         hvx_params.handle = sh->chs_position.value_handle;
         hvx_params.type = BLE_GATT_HVX_NOTIFICATION;
