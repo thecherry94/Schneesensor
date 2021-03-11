@@ -10,6 +10,7 @@
 
 
 // Service UUID
+//
 #define BLE_UUID_GPS_BASE_UUID      { 0x23, 0xD1, 0x13, 0xEF, 0x5F, 0x78, 0x23, 0x15, 0xDE, 0xEF, 0x12, 0x12, 0x00, 0x00, 0x00, 0x00 } 
 #define BLE_UUID_GPS_SERVICE        0xB00B
 
@@ -37,5 +38,7 @@ typedef struct ble_gps_t {
 uint32_t ble_gps_service_init(ble_gps_t* sh);
 void ble_gps_service_on_ble_evt(ble_evt_t* const * ble_evt, void* context);
 void ble_gps_service_position_update(ble_gps_t* sh, snow_gps_position_information* gps_info);
+void ble_gps_service_time_update(ble_gps_t* sh, snow_gps_position_information* gps_info);
+void ble_gps_service_date_update(ble_gps_t* sh, snow_gps_position_information* gps_info);
 
 #endif

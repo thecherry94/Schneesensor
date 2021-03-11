@@ -1,6 +1,11 @@
 #include "ble_gps_service.h"
 
 
+#define GPS_CHAR_POS_DATA_LEN     8
+#define GPS_CHAR_TIME_DATA_LEN    3
+#define GPS_CHAR_DATE_DATA_LEN    3
+
+
 void ble_gps_service_on_ble_evt(ble_evt_t* const * ble_evt, void* context) {
     ble_gps_t* sh = (ble_gps_t*)context;
 
@@ -56,9 +61,9 @@ static uint32_t add_position_characteristic(ble_gps_t* sh) {
     memset(&attr_char_val, 0, sizeof(attr_char_val));
     attr_char_val.p_uuid = &char_uuid;
     attr_char_val.p_attr_md = &char_md;
-    attr_char_val.max_len = 8                             // longitude and latitude are bundled together (2x4 bytes)
-    attr_char_val.init_len = 8;
-    uint8_t[8] data = {0};
+    attr_char_val.max_len = GPS_CHAR_POS_DATA_LEN                 // longitude and latitude are bundled together (2x4 bytes)
+    attr_char_val.init_len = GPS_CHAR_POS_DATA_LEN;
+    uint8_t[GPS_CHAR_POS_DATA_LEN] data = {0};
     attr_char_val.p_value = data;
 
 
@@ -111,9 +116,9 @@ static uint32_t add_time_characteristic(ble_gps_t* sh) {
     memset(&attr_char_val, 0, sizeof(attr_char_val));
     attr_char_val.p_uuid = &char_uuid;
     attr_char_val.p_attr_md = &char_md;
-    attr_char_val.max_len = 3                             // hours, minutes, seconds (3 bytes)
-    attr_char_val.init_len = 3;
-    uint8_t[3] data = {0};
+    attr_char_val.max_len = GPS_CHAR_TIME_DATA_LEN;                            // hours, minutes, seconds (3 bytes)
+    attr_char_val.init_len = GPS_CHAR_TIME_DATA_LEN;
+    uint8_t[GPS_CHAR_TIME_DATA_LEN] data = {0};
     attr_char_val.p_value = data;
 
 
@@ -166,9 +171,9 @@ static uint32_t add_date_characteristic(ble_gps_t* sh) {
     memset(&attr_char_val, 0, sizeof(attr_char_val));
     attr_char_val.p_uuid = &char_uuid;
     attr_char_val.p_attr_md = &char_md;
-    attr_char_val.max_len = 3                             // year, month, day (3 bytes)
-    attr_char_val.init_len = 3;
-    uint8_t[3] data = {0};
+    attr_char_val.max_len = GPS_CHAR_DATE_DATA_LEN;                             // year, month, day (3 bytes)
+    attr_char_val.init_len = GPS_CHAR_DATE_DATA_LEN;
+    uint8_t[GPS_CHAR_DATE_DATA_LEN] data = {0};
     attr_char_val.p_value = data;
 
 
@@ -209,5 +214,63 @@ uint32_t ble_gps_service_init(ble_gps_t* sh) {
 
 
 void ble_gps_service_position_update(ble_gps_t* sh, snow_gps_position_information* gps_info) {
+    if (sh->conn_handle != BLE_CONN_HANDLE_INVALID) {
+        uint16_t len = GPS_CHAR_POS_DATA_LEN;
+        ble_gatts_hvx_params_t hvx_params;
+        memset(&hvx_params, 0, sizeof(hvx_params));
 
+        uint8_t data[len] = {0};
+
+        // TODO prepare data
+
+        hvx_params.handle = sh->chs_position.value_handle;
+        hvx_params.type = BLE_GATT_HVX_NOTIFICATION;
+        hvx_params.offset = 0;
+        hvx_params.p_len = &len;
+        hvx_params.p_data = data;
+
+        sd_ble_gatts_hvx(sh->conn_handle, &hvx_params);
+    }
+}
+
+
+void ble_gps_service_time_update(ble_gps_t* sh, snow_gps_position_information* gps_info) {
+    if (sh->conn_handle != BLE_CONN_HANDLE_INVALID) {
+        uint16_t len = GPS_CHAR_TIME_DATA_LEN;
+        ble_gatts_hvx_params_t hvx_params;
+        memset(&hvx_params, 0, sizeof(hvx_params));
+
+        uint8_t data[len] = {0};
+
+        // TODO prepare data
+
+        hvx_params.handle = sh->chs_position.value_handle;
+        hvx_params.type = BLE_GATT_HVX_NOTIFICATION;
+        hvx_params.offset = 0;
+        hvx_params.p_len = &len;
+        hvx_params.p_data = data;
+
+        sd_ble_gatts_hvx(sh->conn_handle, &hvx_params);
+    }
+}
+
+
+void ble_gps_service_date_update(ble_gps_t* sh, snow_gps_position_information* gps_info) {
+    if (sh->conn_handle != BLE_CONN_HANDLE_INVALID) {
+        uint16_t len = GPS_CHAR_DATE_DATA_LEN;
+        ble_gatts_hvx_params_t hvx_params;
+        memset(&hvx_params, 0, sizeof(hvx_params));
+
+        uint8_t data[len] = {0};
+
+        // TODO prepare data
+
+        hvx_params.handle = sh->chs_position.value_handle;
+        hvx_params.type = BLE_GATT_HVX_NOTIFICATION;
+        hvx_params.offset = 0;
+        hvx_params.p_len = &len;
+        hvx_params.p_data = data;
+
+        sd_ble_gatts_hvx(sh->conn_handle, &hvx_params);
+    }
 }
