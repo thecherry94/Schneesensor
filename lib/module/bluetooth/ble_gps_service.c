@@ -222,16 +222,14 @@ void ble_gps_service_position_update(ble_gps_t* sh, snow_gps_position_informatio
         uint8_t data[len] = {0};
 
         // Prepare data
-        // TODO Leon protip -> uint8_t* benutzen und pointer hochzählen
+        // TODO Leon's protip -> uint8_t* benutzen und pointer hochzählen
+        //uint8_t* test =  (uint8_t*)(&gps_info->longitude);
+        //for (int i = 0; i < len / 2; i++) 
+        //    *(data++) = *(test++);
 
         // Copy the bits of the floats one-to-one into integers to preserve the information without converting
         uint32_t longitude = *(uint32_t*)(&gps_info->longitude);
         uint32_t latitude = *(uint32_t*)(&gps_info->latitude);
-
-        uint8_t* test =  (uint8_t*)(&gps_info->longitude);
-        for (int i = 0; i < len / 2; i++) 
-            *(data++) = *(test++);
-
 
         // Put longitude into the send buffer
         for (int i = 0; i < len / 2; i++) 
