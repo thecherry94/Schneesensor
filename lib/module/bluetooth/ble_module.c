@@ -25,11 +25,41 @@ ble_gps_t m_gps_service;
 ble_air_t m_air_service;
 
 
+APP_TIMER_DEF(m_gps_timer_id);
+APP_TIMER_DEF(m_air_timer_id);
+APP_TIMER_DEF(m_accl_timer_id);
+
+
+
+#define GPS_TIMER_INTERVAL    APP_TIMER_TICKS(1000);
+#define AIR_TIMER_INTERVAL    APP_TIMER_TICKS(1000);
+#define ACCL_TIMER_INTERVAL   APP_TIMER_TICKS(1000);
+
+
+static void timer_gps_timeout_handler(void* context) {
+    // Update GPS BLE service characteristics here
+    //
+}
+
+
+static void timer_air_timeout_handler(void* context) {
+    // Update AIR BLE service characteristics here
+    //
+}
+
+
+static void timer_accl_timeout_handler(void* context) {
+    // Update ACCL BLE service characteristics here
+    //
+}
+
+
 // Add services to advertising here
 //
 static ble_uuid_t m_adv_uuids[] = {
     { BLE_UUID_GPS_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN },
-    { BLE_UUID_AIR_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN }
+    { BLE_UUID_AIR_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN }//,
+    //{ BLE_UUID_ACCL_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN }
 }
 
 static void advertising_start(bool erase_bonds);
@@ -145,9 +175,10 @@ static void timers_init(void) {
     APP_ERROR_CHECK(err_code);
 
 
-    // OUR_JOB: Step 3.H, Initiate our timer
-    app_timer_create(&m_our_char_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_handler);
-
+    // Add timers
+    //
+    app_timer_create(&m_gps_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_handler);
+    app_timer_create(&m_air_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_handler);
 }
 
 
@@ -284,8 +315,8 @@ static void conn_params_init(void) {
 /**@brief Function for starting timers.
  */
 static void application_timers_start(void) {
-    // Init timers here
-    //app_timer_start(m_our_char_timer_id, OUR_CHAR_TIMER_INTERVAL, NULL); 
+    app_timer_start(m_gps_timer_id, GPS_TIMER_INTERVAL, NULL); 
+    app_timer_start(m_air_timer_id, AIR_TIMER_INTERVAL, NULL); 
 }
 
 
