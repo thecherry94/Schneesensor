@@ -10,6 +10,9 @@
 #include "ble_gps_service.h"
 #include "ble_air_service.h"
 
+#include "lib/sensor/snow_gps/snow_gps.h"
+#include "lib/sensor/snow_bme680/bme680.h""
+
 // TODO
 // - Define app timers for service updates
 
@@ -37,14 +40,16 @@ APP_TIMER_DEF(m_accl_timer_id);
 
 
 static void timer_gps_timeout_handler(void* context) {
-    // Update GPS BLE service characteristics here
-    //
+    snow_gps_position_information* gps_info = NULL; // TODO get GPS value
+    ble_gps_service_position_update(&m_gps_service, gps_info);
 }
 
 
 static void timer_air_timeout_handler(void* context) {
-    // Update AIR BLE service characteristics here
-    //
+    bme680_field_data* bme_data = NULL; // TODO get bme data
+    ble_air_service_humidity_update(&m_air_service, bme_data);
+    ble_air_service_temperature_update(&m_air_service, bme_data);
+    ble_air_service_pressure_update(&m_air_service, bme_data);
 }
 
 
