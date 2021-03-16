@@ -54,10 +54,9 @@ TODO:
 
 // Struct for holding measurement values
 typedef struct snow_slave_measurement_t {
-    uint8_t measurements;
     struct snow_accl_xyz_t acceleration;
     struct bme680_field_data bme_data;
-    // Add field for GPS data
+    struct snow_gps_position_information gps_info; 
     // Add field for snow moisture
 } snow_slave_measurement_t;
 

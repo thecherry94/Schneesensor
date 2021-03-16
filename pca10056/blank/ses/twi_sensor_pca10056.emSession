@@ -71,13 +71,14 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditRight" x="21" y="7" useTextEdit="1" openedFrom="E:/Thesis/Software/nRF5_SDK_17.0.2_d674dde/projekte/eigene/Schneesensor/lib/module/bluetooth/ble_module.c" useBinaryEdit="0" left="0" path="../../../lib/module/bluetooth/ble_gps_service.h" selected="0" top="0" codecName="UTF-8"/>
-  <SessionOpenFile windowGroup="DockEditRight" x="29" y="8" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../lib/module/bluetooth/ble_gps_service.c" selected="0" top="0" codecName="UTF-8"/>
+  <SessionOpenFile windowGroup="DockEditRight" x="31" y="33" useTextEdit="1" openedFrom="E:/Thesis/Software/nRF5_SDK_17.0.2_d674dde/projekte/eigene/Schneesensor/lib/module/bluetooth/ble_module.c" useBinaryEdit="0" left="0" path="../../../lib/module/bluetooth/ble_gps_service.h" selected="0" top="0" codecName="UTF-8"/>
+  <SessionOpenFile windowGroup="DockEditRight" x="0" y="274" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../lib/module/bluetooth/ble_gps_service.c" selected="0" top="246" codecName="UTF-8"/>
   <SessionOpenFile windowGroup="DockEditRight" x="0" y="22" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../lib/module/bluetooth/ble_module.h" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditRight" x="0" y="32" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../lib/module/bluetooth/ble_continuous_service.h" selected="0" top="0" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="21" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../lib/module/snow_slave/snow_slave.c" selected="0" top="6" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" openedFrom="E:/Thesis/Software/nRF5_SDK_17.0.2_d674dde/projekte/eigene/Schneesensor/lib/module/snow_slave/snow_slave.c" useBinaryEdit="0" left="0" path="../../../lib/module/snow_slave/snow_slave.h" selected="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="30" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../lib/module/bluetooth/ble_module.c" selected="1" top="27" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="8" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../lib/module/bluetooth/ble_air_service.h" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="41" y="55" useTextEdit="1" openedFrom="E:/Thesis/Software/nRF5_SDK_17.0.2_d674dde/projekte/eigene/Schneesensor/lib/module/snow_slave/snow_slave.c" useBinaryEdit="0" left="0" path="../../../lib/module/snow_slave/snow_slave.h" selected="0" top="36" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="30" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../lib/module/bluetooth/ble_module.c" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="104" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../lib/module/bluetooth/ble_continuous_service.c" selected="1" top="79" codecName="Default"/>
  </Files>
  <ARMCrossStudioWindow activeProject="twi_sensor_pca10056" fileDialogDefaultFilter="*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx" autoConnectTarget="J-Link" buildConfiguration="Release" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="E:/Thesis/Software/nRF5_SDK_17.0.2_d674dde/projekte/eigene/Schneesensor/lib/module/bluetooth" debugSearchPath="" autoConnectCapabilities="3199"/>
 </session>
