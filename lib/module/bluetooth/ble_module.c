@@ -1,17 +1,35 @@
 #include "ble_module.h"
 
+#include "nordic_common.h"
+#include "nrf.h"
+#include "app_error.h"
 #include "ble.h"
 #include "ble_hci.h"
 #include "ble_srv_common.h"
 #include "ble_advdata.h"
 #include "ble_advertising.h"
 #include "ble_conn_params.h"
+#include "nrf_sdh.h"
+#include "nrf_sdh_soc.h"
+#include "nrf_sdh_ble.h"
+#include "app_timer.h"
+#include "peer_manager.h"
+#include "peer_manager_handler.h"
+#include "bsp_btn_ble.h"
+#include "ble_conn_state.h"
+#include "nrf_ble_gatt.h"
+#include "nrf_ble_qwr.h"
+#include "nrf_pwr_mgmt.h"
+
+#include "nrf_log.h"
+#include "nrf_log_ctrl.h"
+#include "nrf_log_default_backends.h"
 
 #include "ble_gps_service.h"
 #include "ble_air_service.h"
 
 #include "lib/sensor/snow_gps/snow_gps.h"
-#include "lib/sensor/snow_bme680/bme680.h""
+#include "lib/sensor/snow_bme680/bme680.h"
 
 // TODO
 // - Define app timers for service updates
@@ -21,7 +39,7 @@ NRF_BLE_GATT_DEF(m_gatt);
 NRF_BLE_QWR_DEF(m_qwr);
 BLE_ADVERTISING_DEF(m_adv);
 
-static uint16_t m_conn_handle = BLUE_CONN_HANDLE_INVALID
+static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;
 
 
 ble_gps_t m_gps_service;
@@ -34,9 +52,9 @@ APP_TIMER_DEF(m_accl_timer_id);
 
 
 
-#define GPS_TIMER_INTERVAL    APP_TIMER_TICKS(1000);
-#define AIR_TIMER_INTERVAL    APP_TIMER_TICKS(1000);
-#define ACCL_TIMER_INTERVAL   APP_TIMER_TICKS(1000);
+#define GPS_TIMER_INTERVAL    APP_TIMER_TICKS(1000)
+#define AIR_TIMER_INTERVAL    APP_TIMER_TICKS(1000)
+#define ACCL_TIMER_INTERVAL   APP_TIMER_TICKS(1000)
 
 
 static void timer_gps_timeout_handler(void* context) {
@@ -46,7 +64,7 @@ static void timer_gps_timeout_handler(void* context) {
 
 
 static void timer_air_timeout_handler(void* context) {
-    bme680_field_data* bme_data = NULL; // TODO get bme data
+    struct bme680_field_data* bme_data = NULL; // TODO get bme data
     ble_air_service_humidity_update(&m_air_service, bme_data);
     ble_air_service_temperature_update(&m_air_service, bme_data);
     ble_air_service_pressure_update(&m_air_service, bme_data);
@@ -65,7 +83,7 @@ static ble_uuid_t m_adv_uuids[] = {
     { BLE_UUID_GPS_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN },
     { BLE_UUID_AIR_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN }//,
     //{ BLE_UUID_ACCL_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN }
-}
+};
 
 static void advertising_start(bool erase_bonds);
 
@@ -119,19 +137,6 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
             pm_conn_sec_config_reply(p_evt->conn_handle, &conn_sec_config);
         } break;
 
-        case PM_EVT_STORAGE_FULL: {
-            // Run garbage collection on the flash.
-            err_code = fds_gc();
-            if (err_code == FDS_ERR_NO_SPACE_IN_QUEUES)
-            {
-                // Retry.
-            }
-            else
-            {
-                APP_ERROR_CHECK(err_code);
-            }
-        } break;
-
         case PM_EVT_PEERS_DELETE_SUCCEEDED: {
             advertising_start(false);
         } break;
@@ -182,8 +187,8 @@ static void timers_init(void) {
 
     // Add timers
     //
-    app_timer_create(&m_gps_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_handler);
-    app_timer_create(&m_air_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_handler);
+    app_timer_create(&m_gps_timer_id, APP_TIMER_MODE_REPEATED, timer_gps_timeout_handler);
+    app_timer_create(&m_air_timer_id, APP_TIMER_MODE_REPEATED, timer_air_timeout_handler);
 }
 
 
@@ -399,8 +404,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
             APP_ERROR_CHECK(err_code);
 
-            //When connected; start our timer to start regular temperature measurements
-            app_timer_start(m_our_char_timer_id, OUR_CHAR_TIMER_INTERVAL, NULL);
+            //TODO When connected; start our timer to start regular temperature measurements
+            //app_timer_start(m_our_char_timer_id, OUR_CHAR_TIMER_INTERVAL, NULL);
             break;
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
@@ -461,8 +466,9 @@ static void ble_stack_init(void) {
     // Register a handler for BLE events.
     NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
 
-    //OUR_JOB: Step 3.C Set up a BLE event observer to call ble_our_service_on_ble_evt() to do housekeeping of ble connections related to our service and characteristics.
-    NRF_SDH_BLE_OBSERVER(m_our_service_observer, APP_BLE_OBSERVER_PRIO, ble_our_service_on_ble_evt, (void*) &m_our_service);
+    //TODO OUR_JOB: Step 3.C Set up a BLE event observer to call ble_our_service_on_ble_evt() to do housekeeping of ble connections related to our service and characteristics.
+    NRF_SDH_BLE_OBSERVER(m_gps_service_observer, APP_BLE_OBSERVER_PRIO, ble_gps_service_on_ble_evt, (void*) &m_gps_service);
+    NRF_SDH_BLE_OBSERVER(m_air_service_observer, APP_BLE_OBSERVER_PRIO, ble_air_service_on_ble_evt, (void*) &m_air_service);
 }
 
 
@@ -537,7 +543,7 @@ static void bsp_event_handler(bsp_event_t event) {
 
         case BSP_EVENT_WHITELIST_OFF:
             if (m_conn_handle == BLE_CONN_HANDLE_INVALID) {
-                err_code = ble_advertising_restart_without_whitelist(&m_advertising);
+                err_code = ble_advertising_restart_without_whitelist(&m_adv);
                 if (err_code != NRF_ERROR_INVALID_STATE) {
                     APP_ERROR_CHECK(err_code);
                 }
@@ -572,10 +578,10 @@ static void advertising_init(void) {
 
     init.evt_handler = on_adv_evt;
 
-    err_code = ble_advertising_init(&m_advertising, &init);
+    err_code = ble_advertising_init(&m_adv, &init);
     APP_ERROR_CHECK(err_code);
 
-    ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
+    ble_advertising_conn_cfg_tag_set(&m_adv, APP_BLE_CONN_CFG_TAG);
 }
 
 
@@ -637,7 +643,7 @@ static void advertising_start(bool erase_bonds) {
         delete_bonds();
         // Advertising is started by PM_EVT_PEERS_DELETED_SUCEEDED event
     } else {
-        ret_code_t err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST);
+        ret_code_t err_code = ble_advertising_start(&m_adv, BLE_ADV_MODE_FAST);
 
         APP_ERROR_CHECK(err_code);
     }

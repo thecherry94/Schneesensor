@@ -11,6 +11,7 @@ TODO:
 #include "ble_advertising.h"
 #include "ble_conn_params.h"
 
+#include "lib/module/bluetooth/ble_module.h"
 #include "lib/sensor/snow_adxl362/snow_adxl362.h"
 #include "lib/sensor/snow_bme680/snow_bme680.h"
 #include "lib/sensor/snow_gps/snow_gps.h"

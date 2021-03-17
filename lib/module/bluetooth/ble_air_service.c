@@ -6,7 +6,7 @@
 #define AIR_CHAR_PRESSURE_DATA_LEN        4
 
 
-void ble_air_service_on_ble_evt(ble_evt_t* const * ble_evt, void* context) {
+void ble_air_service_on_ble_evt(ble_evt_t const * ble_evt, void* context) {
     ble_air_t* sh = (ble_air_t*)context;
 
     switch (ble_evt->header.evt_id) {
@@ -47,9 +47,9 @@ static uint32_t add_humidity_characteristic(ble_air_t* sh) {
     //
     ble_gatts_attr_md_t cccd_md;
     memset(&cccd_md, 0, sizeof(cccd_md));
-    cccd_md.char_props.notify = 1;   
     cccd_md.vloc = BLE_GATTS_VLOC_STACK;
     char_md.p_cccd_md = &cccd_md;
+    char_md.char_props.notify = 1;
 
 
     BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
@@ -61,15 +61,15 @@ static uint32_t add_humidity_characteristic(ble_air_t* sh) {
     memset(&attr_char_val, 0, sizeof(attr_char_val));
     attr_char_val.p_uuid = &char_uuid;
     attr_char_val.p_attr_md = &char_md;
-    attr_char_val.max_len = AIR_CHAR_HUMIDITY_DATA_LEN                 // longitude and latitude are bundled together (2x4 bytes)
+    attr_char_val.max_len = AIR_CHAR_HUMIDITY_DATA_LEN;                 // longitude and latitude are bundled together (2x4 bytes)
     attr_char_val.init_len = AIR_CHAR_HUMIDITY_DATA_LEN;
-    uint8_t[AIR_CHAR_HUMIDITY_DATA_LEN] data = {0};
+    uint8_t data[AIR_CHAR_HUMIDITY_DATA_LEN] = {0};
     attr_char_val.p_value = data;
 
 
     // Add the characteristic to the service
     //
-    err_code = sd_ble_gatts_characteristic_add(sh, &char_md, &attr_char_val, &sh->chs_position);
+    err_code = sd_ble_gatts_characteristic_add(sh, &char_md, &attr_char_val, &sh->chs_humidity);
 
     return NRF_SUCCESS;
 }
@@ -102,10 +102,10 @@ static uint32_t add_temperature_characteristic(ble_air_t* sh) {
     // Specifiy characteristic CCCD metadata for read/write access
     //
     ble_gatts_attr_md_t cccd_md;
-    memset(&cccd_md, 0, sizeof(cccd_md));
-    cccd_md.char_props.notify = 1;   
+    memset(&cccd_md, 0, sizeof(cccd_md));   
     cccd_md.vloc = BLE_GATTS_VLOC_STACK;
     char_md.p_cccd_md = &cccd_md;
+    char_md.char_props.notify = 1;
 
 
     BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
@@ -119,13 +119,13 @@ static uint32_t add_temperature_characteristic(ble_air_t* sh) {
     attr_char_val.p_attr_md = &char_md;
     attr_char_val.max_len = AIR_CHAR_TEMPERATURE_DATA_LEN;                            // hours, minutes, seconds (3 bytes)
     attr_char_val.init_len = AIR_CHAR_TEMPERATURE_DATA_LEN;
-    uint8_t[AIR_CHAR_TEMPERATURE_DATA_LEN] data = {0};
+    uint8_t data[AIR_CHAR_TEMPERATURE_DATA_LEN] = {0};
     attr_char_val.p_value = data;
 
 
     // Add the characteristic to the service
     //
-    err_code = sd_ble_gatts_characteristic_add(sh, &char_md, &attr_char_val, &sh->chs_position);
+    err_code = sd_ble_gatts_characteristic_add(sh, &char_md, &attr_char_val, &sh->chs_temperature);
 
     return NRF_SUCCESS;
 }
@@ -158,10 +158,10 @@ static uint32_t add_pressure_characteristic(ble_air_t* sh) {
     // Specifiy characteristic CCCD metadata for read/write access
     //
     ble_gatts_attr_md_t cccd_md;
-    memset(&cccd_md, 0, sizeof(cccd_md));
-    cccd_md.char_props.notify = 1;   
+    memset(&cccd_md, 0, sizeof(cccd_md));    
     cccd_md.vloc = BLE_GATTS_VLOC_STACK;
     char_md.p_cccd_md = &cccd_md;
+    char_md.char_props.notify = 1;  
 
 
     BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
@@ -175,13 +175,13 @@ static uint32_t add_pressure_characteristic(ble_air_t* sh) {
     attr_char_val.p_attr_md = &char_md;
     attr_char_val.max_len = AIR_CHAR_PRESSURE_DATA_LEN;                            // hours, minutes, seconds (3 bytes)
     attr_char_val.init_len = AIR_CHAR_PRESSURE_DATA_LEN;
-    uint8_t[AIR_CHAR_PRESSURE_DATA_LEN] data = {0};
+    uint8_t data[AIR_CHAR_PRESSURE_DATA_LEN] = {0};
     attr_char_val.p_value = data;
 
 
     // Add the characteristic to the service
     //
-    err_code = sd_ble_gatts_characteristic_add(sh, &char_md, &attr_char_val, &sh->chs_position);
+    err_code = sd_ble_gatts_characteristic_add(sh, &char_md, &attr_char_val, &sh->chs_pressure);
 
     return NRF_SUCCESS;
 }
@@ -193,7 +193,7 @@ uint32_t ble_air_service_init(ble_air_t* sh) {
 
     // Set UUID for service
     ble_uuid_t service_uuid;
-    ble_uuid128_t base_uid = BLE_UUID_AIR_BASE_UUID;
+    ble_uuid128_t base_uuid = BLE_UUID_AIR_BASE_UUID;
     service_uuid.uuid = BLE_UUID_AIR_SERVICE;
 
     // Add service UUID
@@ -211,13 +211,13 @@ uint32_t ble_air_service_init(ble_air_t* sh) {
 }
 
 
-void ble_air_service_humidity_update(ble_air_t* sh, bme680_field_data* bme_data) {
+void ble_air_service_humidity_update(ble_air_t* sh, struct bme680_field_data* bme_data) {
     if (sh->conn_handle != BLE_CONN_HANDLE_INVALID) {
         uint16_t len = AIR_CHAR_HUMIDITY_DATA_LEN;
         ble_gatts_hvx_params_t hvx_params;
         memset(&hvx_params, 0, sizeof(hvx_params));
 
-        uint8_t data[len] = {0};
+        uint8_t data[AIR_CHAR_HUMIDITY_DATA_LEN] = {0};
 
         // prepare data
         for (int i = 0; i < AIR_CHAR_HUMIDITY_DATA_LEN; i++) 
@@ -234,13 +234,13 @@ void ble_air_service_humidity_update(ble_air_t* sh, bme680_field_data* bme_data)
 }
 
 
-void ble_air_service_temperature_update(ble_air_t* sh, bme680_field_data* bme_data) {
+void ble_air_service_temperature_update(ble_air_t* sh, struct bme680_field_data* bme_data) {
     if (sh->conn_handle != BLE_CONN_HANDLE_INVALID) {
-        uint16_t len = AIR_CHAR_TEMPERATURE_DATA_LEN;
+        const uint16_t len = AIR_CHAR_TEMPERATURE_DATA_LEN;
         ble_gatts_hvx_params_t hvx_params;
         memset(&hvx_params, 0, sizeof(hvx_params));
 
-        uint8_t data[len] = {0};
+        uint8_t data[AIR_CHAR_TEMPERATURE_DATA_LEN] = {0};
 
         // prepare data
         for (int i = 0; i < AIR_CHAR_TEMPERATURE_DATA_LEN; i++) 
@@ -258,13 +258,13 @@ void ble_air_service_temperature_update(ble_air_t* sh, bme680_field_data* bme_da
 
 
 
-void ble_air_service_pressure_update(ble_air_t* sh, bme680_field_data* bme_data) {
+void ble_air_service_pressure_update(ble_air_t* sh, struct bme680_field_data* bme_data) {
     if (sh->conn_handle != BLE_CONN_HANDLE_INVALID) {
-        uint16_t len = AIR_CHAR_PRESSURE_DATA_LEN;
+        const uint16_t len = AIR_CHAR_PRESSURE_DATA_LEN;
         ble_gatts_hvx_params_t hvx_params;
         memset(&hvx_params, 0, sizeof(hvx_params));
 
-        uint8_t data[len] = {0};
+        uint8_t data[AIR_CHAR_PRESSURE_DATA_LEN] = {0};
 
         // prepare data
         for (int i = 0; i < AIR_CHAR_PRESSURE_DATA_LEN; i++) 
