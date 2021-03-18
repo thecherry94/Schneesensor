@@ -65,7 +65,7 @@ uint8_t snow_slave_init() {
 
 uint8_t snow_slave_run() {
     #ifdef __DEBUG__
-    test_everything();
+    test_ble();
     #endif
 }
 
@@ -215,6 +215,14 @@ void test_gps() {
 }
 
 
+
+void test_ble() {
+    snow_ble_init();
+
+    for (;;) {
+        
+    }
+}
 
 
 

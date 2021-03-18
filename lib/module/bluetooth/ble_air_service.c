@@ -52,8 +52,8 @@ static uint32_t add_humidity_characteristic(ble_air_t* sh) {
     char_md.char_props.notify = 1;
 
 
-    BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
-    BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
 
     // Specifiy the value options of the characteristic
     //
@@ -108,8 +108,8 @@ static uint32_t add_temperature_characteristic(ble_air_t* sh) {
     char_md.char_props.notify = 1;
 
 
-    BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
-    BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
 
     // Specifiy the value options of the characteristic
     //
@@ -164,8 +164,8 @@ static uint32_t add_pressure_characteristic(ble_air_t* sh) {
     char_md.char_props.notify = 1;  
 
 
-    BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
-    BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
 
     // Specifiy the value options of the characteristic
     //

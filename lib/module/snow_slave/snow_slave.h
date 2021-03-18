@@ -104,6 +104,7 @@ ret_code_t spi_init();
 void test_bme();
 void test_adxl362();
 void test_gps();
+void test_ble();
 void test_everything();
 #endif 
 

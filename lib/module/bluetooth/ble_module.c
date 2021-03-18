@@ -9,6 +9,7 @@
 #include "ble_advdata.h"
 #include "ble_advertising.h"
 #include "ble_conn_params.h"
+#include "nrf_ble_gatt.h"
 #include "nrf_sdh.h"
 #include "nrf_sdh_soc.h"
 #include "nrf_sdh_ble.h"
@@ -111,6 +112,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
     ret_code_t err_code;
 
     switch (p_evt->evt_id) {
+    /*
         case PM_EVT_BONDED_PEER_CONNECTED: {
             NRF_LOG_INFO("Connected to a previously bonded device.");
         } break;
@@ -129,18 +131,18 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
              * Sometimes, it cannot be restarted until the link is disconnected and reconnected.
              * Sometimes it is impossible, to secure the link, or the peer device does not support it.
              * How to handle this error is highly application dependent. */
-        } break;
+        /*} break;
 
         case PM_EVT_CONN_SEC_CONFIG_REQ: {
             // Reject pairing request from an already bonded peer.
             pm_conn_sec_config_t conn_sec_config = {.allow_repairing = false};
             pm_conn_sec_config_reply(p_evt->conn_handle, &conn_sec_config);
         } break;
-
+*/
         case PM_EVT_PEERS_DELETE_SUCCEEDED: {
             advertising_start(false);
         } break;
-
+/*
         case PM_EVT_PEER_DATA_UPDATE_FAILED: {
             // Assert.
             APP_ERROR_CHECK(p_evt->params.peer_data_update_failed.error);
@@ -160,7 +162,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
             // Assert.
             APP_ERROR_CHECK(p_evt->params.error_unexpected.error);
         } break;
-
+*/
         case PM_EVT_CONN_SEC_START:
         case PM_EVT_PEER_DATA_UPDATE_SUCCEEDED:
         case PM_EVT_PEER_DELETE_SUCCEEDED:
@@ -331,11 +333,12 @@ static void application_timers_start(void) {
 
 
 
+// TODO Re-implement sleep mode
 /**@brief Function for putting the chip into sleep mode.
  *
  * @note This function will not return.
  */
-static void sleep_mode_enter(void) {
+/*static void sleep_mode_enter(void) {
     ret_code_t err_code;
 
     err_code = bsp_indication_set(BSP_INDICATE_IDLE);
@@ -348,7 +351,7 @@ static void sleep_mode_enter(void) {
     // Go to system-off mode (this function will not return; wakeup will cause a reset).
     err_code = sd_power_system_off();
     APP_ERROR_CHECK(err_code);
-}
+}*/
 
 
 
@@ -369,7 +372,7 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt) {
             break;
 
         case BLE_ADV_EVT_IDLE:
-            sleep_mode_enter();
+            //sleep_mode_enter();
             break;
 
         default:
@@ -525,12 +528,12 @@ static void delete_bonds(void)
  *
  * @param[in]   event   Event generated when button is pressed.
  */
-static void bsp_event_handler(bsp_event_t event) {
+/*static void bsp_event_handler(bsp_event_t event) {
     ret_code_t err_code;
 
     switch (event) {
         case BSP_EVENT_SLEEP:
-            sleep_mode_enter();
+            //sleep_mode_enter();
             break; // BSP_EVENT_SLEEP
 
         case BSP_EVENT_DISCONNECT:
@@ -553,7 +556,7 @@ static void bsp_event_handler(bsp_event_t event) {
         default:
             break;
     }
-}    
+}    */
 
 
 
@@ -590,6 +593,7 @@ static void advertising_init(void) {
  *
  * @param[out] p_erase_bonds  Will be true if the clear bonding button was pressed to wake the application up.
  */
+ /*
 static void buttons_leds_init(bool * p_erase_bonds) {
     ret_code_t err_code;
     bsp_event_t startup_event;
@@ -602,7 +606,7 @@ static void buttons_leds_init(bool * p_erase_bonds) {
 
     *p_erase_bonds = (startup_event == BSP_EVENT_CLEAR_BONDING_DATA);
 }
-
+*/
 
 
 /**@brief Function for initializing the nrf log module.
@@ -618,11 +622,11 @@ static void log_init(void) {
 
 /**@brief Function for initializing power management.
  */
-static void power_management_init(void) {
+/*static void power_management_init(void) {
     ret_code_t err_code;
     err_code = nrf_pwr_mgmt_init();
     APP_ERROR_CHECK(err_code);
-}
+}*/
 
 
 /**@brief Function for handling the idle state (main loop).
@@ -656,8 +660,8 @@ uint32_t snow_ble_init() {
      // Initialize.
     //log_init();
     timers_init();
-    buttons_leds_init(&erase_bonds);
-    power_management_init();
+    //buttons_leds_init(&erase_bonds);
+    //power_management_init();
     ble_stack_init();
     gap_params_init();
     gatt_init();

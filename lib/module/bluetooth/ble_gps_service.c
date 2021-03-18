@@ -52,8 +52,8 @@ static uint32_t add_position_characteristic(ble_gps_t* sh) {
     char_md.char_props.notify = 1; 
 
 
-    BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
-    BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
 
     // Specifiy the value options of the characteristic
     //
@@ -107,8 +107,8 @@ static uint32_t add_time_characteristic(ble_gps_t* sh) {
     char_md.char_props.notify = 1; 
 
 
-    BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
-    BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
 
     // Specifiy the value options of the characteristic
     //
@@ -162,8 +162,8 @@ static uint32_t add_date_characteristic(ble_gps_t* sh) {
     char_md.char_props.notify = 1; 
 
 
-    BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
-    BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
 
     // Specifiy the value options of the characteristic
     //
