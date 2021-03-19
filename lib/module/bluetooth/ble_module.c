@@ -26,8 +26,7 @@
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 
-#include "ble_gps_service.h"
-#include "ble_air_service.h"
+#include "ble_snow_service.h"
 
 #include "snow_gps.h"
 #include "bme680.h"
@@ -43,55 +42,20 @@ BLE_ADVERTISING_DEF(m_adv);
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;
 
 
-ble_gps_t m_gps_service;
-ble_air_t m_air_service;
+ble_snow_t m_snow_service;
 
-
-APP_TIMER_DEF(m_gps_timer_id);
-APP_TIMER_DEF(m_air_timer_id);
-APP_TIMER_DEF(m_accl_timer_id);
+APP_TIMER_DEF(m_snow_timer_id);
+#define SNOW_TIMER_INTERVAL    APP_TIMER_TICKS(1000)
 
 
 
-#define GPS_TIMER_INTERVAL    APP_TIMER_TICKS(1000)
-#define AIR_TIMER_INTERVAL    APP_TIMER_TICKS(1000)
-#define ACCL_TIMER_INTERVAL   APP_TIMER_TICKS(1000)
-
-
-static void timer_gps_timeout_handler(void* context) {
-
-    // Dummy data
-    snow_gps_position_information gps_info = {
-        .latitude = 1.0f,
-        .longitude = 2.0f,
-        .speed = 3.0f,
-        .valid = true
-    };
-
-    ble_gps_service_position_update(&m_gps_service, &gps_info);
+static void timer_snow_timeout_handler(void* context) {
 }
-
-
-static void timer_air_timeout_handler(void* context) {
-    struct bme680_field_data* bme_data = NULL; // TODO get bme data
-    ble_air_service_humidity_update(&m_air_service, bme_data);
-    ble_air_service_temperature_update(&m_air_service, bme_data);
-    ble_air_service_pressure_update(&m_air_service, bme_data);
-}
-
-
-static void timer_accl_timeout_handler(void* context) {
-    // Update ACCL BLE service characteristics here
-    //
-}
-
 
 // Add services to advertising here
 //
 static ble_uuid_t m_adv_uuids[] = {
-    //{ BLE_UUID_GPS_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN },
-    { BLE_UUID_AIR_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN }//,
-    //{ BLE_UUID_ACCL_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN }
+    { BLE_UUID_SNOW_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN }
 };
 
 static void advertising_start(bool erase_bonds);
@@ -197,8 +161,8 @@ static void timers_init(void) {
 
     // Add timers
     //
-    app_timer_create(&m_gps_timer_id, APP_TIMER_MODE_REPEATED, timer_gps_timeout_handler);
-    app_timer_create(&m_air_timer_id, APP_TIMER_MODE_REPEATED, timer_air_timeout_handler);
+    app_timer_create(&m_snow_timer_id, APP_TIMER_MODE_REPEATED, timer_snow_timeout_handler);
+
 }
 
 
@@ -270,10 +234,7 @@ static void services_init(void) {
 
     // Init services here
     //
-    err_code = ble_gps_service_init(&m_gps_service);
-    err_code = ble_air_service_init(&m_air_service);
-    //ble_snow_service_init(&m_snow_service);
-    //ble_accl_service_init(&m_accl_service);
+    err_code = ble_snow_service_init(&m_snow_service);
 }
 
 
@@ -335,8 +296,7 @@ static void conn_params_init(void) {
 /**@brief Function for starting timers.
  */
 static void application_timers_start(void) {
-    app_timer_start(m_gps_timer_id, GPS_TIMER_INTERVAL, NULL); 
-    app_timer_start(m_air_timer_id, AIR_TIMER_INTERVAL, NULL); 
+    app_timer_start(m_snow_timer_id, SNOW_TIMER_INTERVAL, NULL); 
 }
 
 
@@ -478,8 +438,7 @@ static void ble_stack_init(void) {
     NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
 
     //TODO OUR_JOB: Step 3.C Set up a BLE event observer to call ble_our_service_on_ble_evt() to do housekeeping of ble connections related to our service and characteristics.
-    NRF_SDH_BLE_OBSERVER(m_gps_service_observer, APP_BLE_OBSERVER_PRIO, ble_gps_service_on_ble_evt, (void*) &m_gps_service);
-    NRF_SDH_BLE_OBSERVER(m_air_service_observer, APP_BLE_OBSERVER_PRIO, ble_air_service_on_ble_evt, (void*) &m_air_service);
+    NRF_SDH_BLE_OBSERVER(m_snow_service_observer, APP_BLE_OBSERVER_PRIO, ble_snow_service_on_ble_evt, (void*) &m_snow_service);
 }
 
 
