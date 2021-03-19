@@ -70,7 +70,7 @@ typedef struct snow_accl_xyz_t {
 
 
 
-
+typedef uint8_t (*snow_spi_transfer_t)(uint8_t* tx_buf, uint8_t tx_len, uint8_t* rx_buf, uint8_t rx_len, uint8_t cs_pin);
 
 
 
@@ -94,7 +94,6 @@ snow_adxl362_ret_code_t snow_adxl362_write_reg(snow_adxl362_device* adxl_device,
 
 
 struct snow_adxl362_device snow_adxl362_create_device(uint8_t cs_pin, snow_adxl362_config_t* user_cfg);
-
 
 
 #endif

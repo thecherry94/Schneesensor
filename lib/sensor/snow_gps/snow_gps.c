@@ -1,8 +1,7 @@
 #include "snow_gps.h"
 #include "nrf_delay.h"
 
-#include "lib/module/minmea/minmea.h"
-
+#include "minmea.h"
 
 nrf_drv_twi_t* m_twi;
 uint8_t m_read_buf[SNOW_GPS_DATA_BUFFER_SIZE+1] = {0};

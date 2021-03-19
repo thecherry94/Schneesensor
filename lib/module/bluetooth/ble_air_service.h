@@ -4,7 +4,7 @@
 #include "ble.h"
 #include "ble_srv_common.h"
 
-#include "lib/sensor/snow_bme680/bme680_defs.h"
+#include "bme680_defs.h"
 
 #include "ble_defs.h"
 

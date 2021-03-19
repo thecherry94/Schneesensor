@@ -1,5 +1,4 @@
 #include "snow_adxl362.h"
-#include "lib/module/spi_handler/spi_handler.h"
 #include "nrf_drv_spi.h"
 #include "nrf_gpio.h"
 #include <stdio.h>
@@ -7,6 +6,9 @@
 
 nrf_drv_spi_t*                m_spi = NULL;
 snow_spi_transfer_t           m_spi_transfer_func = NULL;
+
+
+
 
 
 

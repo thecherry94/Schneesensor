@@ -29,8 +29,8 @@
 #include "ble_gps_service.h"
 #include "ble_air_service.h"
 
-#include "lib/sensor/snow_gps/snow_gps.h"
-#include "lib/sensor/snow_bme680/bme680.h"
+#include "snow_gps.h"
+#include "bme680.h"
 
 // TODO
 // - Define app timers for service updates
@@ -59,8 +59,16 @@ APP_TIMER_DEF(m_accl_timer_id);
 
 
 static void timer_gps_timeout_handler(void* context) {
-    snow_gps_position_information* gps_info = NULL; // TODO get GPS value
-    ble_gps_service_position_update(&m_gps_service, gps_info);
+
+    // Dummy data
+    snow_gps_position_information gps_info = {
+        .latitude = 1.0f,
+        .longitude = 2.0f,
+        .speed = 3.0f,
+        .valid = true
+    };
+
+    ble_gps_service_position_update(&m_gps_service, &gps_info);
 }
 
 
@@ -81,7 +89,7 @@ static void timer_accl_timeout_handler(void* context) {
 // Add services to advertising here
 //
 static ble_uuid_t m_adv_uuids[] = {
-    { BLE_UUID_GPS_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN },
+    //{ BLE_UUID_GPS_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN },
     { BLE_UUID_AIR_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN }//,
     //{ BLE_UUID_ACCL_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN }
 };
@@ -112,7 +120,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
     ret_code_t err_code;
 
     switch (p_evt->evt_id) {
-    /*
+    
         case PM_EVT_BONDED_PEER_CONNECTED: {
             NRF_LOG_INFO("Connected to a previously bonded device.");
         } break;
@@ -131,18 +139,18 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
              * Sometimes, it cannot be restarted until the link is disconnected and reconnected.
              * Sometimes it is impossible, to secure the link, or the peer device does not support it.
              * How to handle this error is highly application dependent. */
-        /*} break;
+        } break;
 
         case PM_EVT_CONN_SEC_CONFIG_REQ: {
             // Reject pairing request from an already bonded peer.
             pm_conn_sec_config_t conn_sec_config = {.allow_repairing = false};
             pm_conn_sec_config_reply(p_evt->conn_handle, &conn_sec_config);
         } break;
-*/
+
         case PM_EVT_PEERS_DELETE_SUCCEEDED: {
             advertising_start(false);
         } break;
-/*
+
         case PM_EVT_PEER_DATA_UPDATE_FAILED: {
             // Assert.
             APP_ERROR_CHECK(p_evt->params.peer_data_update_failed.error);
@@ -162,7 +170,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
             // Assert.
             APP_ERROR_CHECK(p_evt->params.error_unexpected.error);
         } break;
-*/
+
         case PM_EVT_CONN_SEC_START:
         case PM_EVT_PEER_DATA_UPDATE_SUCCEEDED:
         case PM_EVT_PEER_DELETE_SUCCEEDED:
@@ -262,8 +270,8 @@ static void services_init(void) {
 
     // Init services here
     //
-    ble_gps_service_init(&m_gps_service);
-    ble_air_service_init(&m_air_service);
+    err_code = ble_gps_service_init(&m_gps_service);
+    err_code = ble_air_service_init(&m_air_service);
     //ble_snow_service_init(&m_snow_service);
     //ble_accl_service_init(&m_accl_service);
 }

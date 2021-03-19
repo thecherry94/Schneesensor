@@ -23,7 +23,7 @@
 
 
 #include "nrf_drv_twi.h"
-#include "lib/module/minmea/minmea.h"
+#include "minmea.h"
 
 
 //

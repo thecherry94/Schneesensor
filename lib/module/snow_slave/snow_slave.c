@@ -22,7 +22,7 @@
 
 
 #include "snow_slave.h"
-#include "lib/module/bluetooth/ble_module.h"
+#include "ble_module.h"
 
 
 #include <math.h>

@@ -6,7 +6,7 @@
 
 
 #include "ble_defs.h"
-#include "lib/sensor/snow_gps/snow_gps.h"
+#include "snow_gps.h"
 
 
 // Service UUID

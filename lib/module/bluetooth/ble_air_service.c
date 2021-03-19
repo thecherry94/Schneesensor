@@ -47,13 +47,18 @@ static uint32_t add_humidity_characteristic(ble_air_t* sh) {
     //
     ble_gatts_attr_md_t cccd_md;
     memset(&cccd_md, 0, sizeof(cccd_md));
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
     cccd_md.vloc = BLE_GATTS_VLOC_STACK;
     char_md.p_cccd_md = &cccd_md;
     char_md.char_props.notify = 1;
 
 
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
+    ble_gatts_attr_md_t attr_md;
+    memset(&attr_md, 0, sizeof(attr_md));  
+    attr_md.vloc = BLE_GATTS_VLOC_STACK;
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&attr_md.write_perm);
 
     // Specifiy the value options of the characteristic
     //
@@ -69,9 +74,9 @@ static uint32_t add_humidity_characteristic(ble_air_t* sh) {
 
     // Add the characteristic to the service
     //
-    err_code = sd_ble_gatts_characteristic_add(sh, &char_md, &attr_char_val, &sh->chs_humidity);
+    err_code = sd_ble_gatts_characteristic_add(sh->service_handle, &char_md, &attr_char_val, &sh->chs_humidity);
 
-    return NRF_SUCCESS;
+    return err_code;
 }
 
 
@@ -102,14 +107,18 @@ static uint32_t add_temperature_characteristic(ble_air_t* sh) {
     // Specifiy characteristic CCCD metadata for read/write access
     //
     ble_gatts_attr_md_t cccd_md;
-    memset(&cccd_md, 0, sizeof(cccd_md));   
+    memset(&cccd_md, 0, sizeof(cccd_md));
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
     cccd_md.vloc = BLE_GATTS_VLOC_STACK;
     char_md.p_cccd_md = &cccd_md;
     char_md.char_props.notify = 1;
 
-
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
+    ble_gatts_attr_md_t attr_md;
+    memset(&attr_md, 0, sizeof(attr_md));  
+    attr_md.vloc = BLE_GATTS_VLOC_STACK;
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&attr_md.write_perm); 
 
     // Specifiy the value options of the characteristic
     //
@@ -125,9 +134,9 @@ static uint32_t add_temperature_characteristic(ble_air_t* sh) {
 
     // Add the characteristic to the service
     //
-    err_code = sd_ble_gatts_characteristic_add(sh, &char_md, &attr_char_val, &sh->chs_temperature);
+    err_code = sd_ble_gatts_characteristic_add(sh->service_handle, &char_md, &attr_char_val, &sh->chs_temperature);
 
-    return NRF_SUCCESS;
+    return err_code;
 }
 
 
@@ -158,14 +167,18 @@ static uint32_t add_pressure_characteristic(ble_air_t* sh) {
     // Specifiy characteristic CCCD metadata for read/write access
     //
     ble_gatts_attr_md_t cccd_md;
-    memset(&cccd_md, 0, sizeof(cccd_md));    
+    memset(&cccd_md, 0, sizeof(cccd_md));  
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
     cccd_md.vloc = BLE_GATTS_VLOC_STACK;
     char_md.p_cccd_md = &cccd_md;
     char_md.char_props.notify = 1;  
 
-
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
+    ble_gatts_attr_md_t attr_md;
+    memset(&attr_md, 0, sizeof(attr_md));  
+    attr_md.vloc = BLE_GATTS_VLOC_STACK;
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&attr_md.write_perm);
 
     // Specifiy the value options of the characteristic
     //
@@ -181,9 +194,9 @@ static uint32_t add_pressure_characteristic(ble_air_t* sh) {
 
     // Add the characteristic to the service
     //
-    err_code = sd_ble_gatts_characteristic_add(sh, &char_md, &attr_char_val, &sh->chs_pressure);
+    err_code = sd_ble_gatts_characteristic_add(sh->service_handle, &char_md, &attr_char_val, &sh->chs_pressure);
 
-    return NRF_SUCCESS;
+    return err_code;
 }
 
 

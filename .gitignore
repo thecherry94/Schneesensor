@@ -1,3 +1,5 @@
-**/pca10056/blank/ses/Output
-**/hex
-**/pca10040
+hex/
+pca10040/
+pca10040e/
+pca10056e/
+pca10056/s140/ses/Output
