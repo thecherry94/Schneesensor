@@ -39,6 +39,13 @@ NRF_BLE_GATT_DEF(m_gatt);
 NRF_BLE_QWR_DEF(m_qwr);
 BLE_ADVERTISING_DEF(m_adv);
 
+
+ble_callback_t cb_on_ble_connected;
+ble_callback_t cb_on_ble_disconnected;
+
+void set_on_ble_connected(ble_callback_t cb) { cb_on_ble_connected = cb; }
+void set_on_ble_disconnected(ble_callback_t cb) { cb_on_ble_disconnected = cb; }
+
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;
 
 
@@ -364,6 +371,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             NRF_LOG_INFO("Disconnected.");
             // LED indication will be changed when advertising starts.
  
+            if (cb_on_ble_disconnected != NULL)
+                cb_on_ble_disconnected();
 
             break;
 
@@ -377,6 +386,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 
             //TODO When connected; start our timer to start regular temperature measurements
             //app_timer_start(m_our_char_timer_id, OUR_CHAR_TIMER_INTERVAL, NULL);
+            if (cb_on_ble_connected != NULL)
+                cb_on_ble_connected();
             break;
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
@@ -621,6 +632,11 @@ static void advertising_start(bool erase_bonds) {
 }
 
 
+ble_snow_t* ble_snow_service_get() {
+    return &m_snow_service;
+}
+
+
 uint32_t snow_ble_init() {
     bool erase_bonds;
 
@@ -643,6 +659,7 @@ uint32_t snow_ble_init() {
     
     return NRF_SUCCESS;
 }
+
 
 
 

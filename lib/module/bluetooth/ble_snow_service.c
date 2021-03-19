@@ -531,6 +531,7 @@ void ble_snow_service_humidity_update(ble_snow_t* sh, struct bme680_field_data* 
 
 
 void ble_snow_service_temperature_update(ble_snow_t* sh, struct bme680_field_data* bme_data) {
+    uint32_t err_code;
     if (sh->conn_handle != BLE_CONN_HANDLE_INVALID) {
         const uint16_t len = AIR_CHAR_TEMPERATURE_DATA_LEN;
         ble_gatts_hvx_params_t hvx_params;
@@ -548,7 +549,7 @@ void ble_snow_service_temperature_update(ble_snow_t* sh, struct bme680_field_dat
         hvx_params.p_len = &len;
         hvx_params.p_data = data;
 
-        sd_ble_gatts_hvx(sh->conn_handle, &hvx_params);
+        err_code = sd_ble_gatts_hvx(sh->conn_handle, &hvx_params);
     }
 }
 
