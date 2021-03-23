@@ -58,7 +58,7 @@ typedef struct snow_slave_measurement_t {
     uint8_t measurements;
     struct snow_accl_xyz_t acceleration;
     struct bme680_field_data bme_data;
-    // Add field for GPS data
+    struct snow_gps_position_information gps_data;// Add field for GPS data
     // Add field for snow moisture
 } snow_slave_measurement_t;
 
@@ -86,6 +86,9 @@ uint8_t snow_slave_check_components(uint8_t components);
 uint8_t snow_slave_reset_components(uint8_t components);
 
 
+void snow_slave_toggle_continuous_measurement();
+
+
 
 
 // General init functions
@@ -96,6 +99,8 @@ ret_code_t twi_init();
 
 // Init SPI
 ret_code_t spi_init();
+
+ret_code_t sensors_init();
 
 
 // Test functions

@@ -21,6 +21,7 @@
 #include "nrf_ble_gatt.h"
 #include "nrf_ble_qwr.h"
 #include "nrf_pwr_mgmt.h"
+#include "ble_nus.h"
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
@@ -28,6 +29,7 @@
 
 #include "ble_snow_service.h"
 
+#include "snow_slave.h"
 #include "snow_gps.h"
 #include "bme680.h"
 
@@ -39,14 +41,14 @@ NRF_BLE_GATT_DEF(m_gatt);
 NRF_BLE_QWR_DEF(m_qwr);
 BLE_ADVERTISING_DEF(m_adv);
 
+BLE_NUS_DEF(m_nus, NRF_SDH_BLE_TOTAL_LINK_COUNT);
 
 ble_callback_t cb_on_ble_connected;
 ble_callback_t cb_on_ble_disconnected;
 
-void set_on_ble_connected(ble_callback_t cb) { cb_on_ble_connected = cb; }
-void set_on_ble_disconnected(ble_callback_t cb) { cb_on_ble_disconnected = cb; }
 
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;
+static uint16_t m_ble_nus_max_data_len = BLE_GATT_ATT_MTU_DEFAULT - 3;
 
 
 ble_snow_t m_snow_service;
@@ -62,10 +64,48 @@ static void timer_snow_timeout_handler(void* context) {
 // Add services to advertising here
 //
 static ble_uuid_t m_adv_uuids[] = {
-    { BLE_UUID_SNOW_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN }
+    { BLE_UUID_NUS_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN }
+    //{ BLE_UUID_SNOW_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN }
 };
 
 static void advertising_start(bool erase_bonds);
+
+
+uint32_t snow_ble_data_send(uint8_t* data, uint16_t* len) {
+    return ble_nus_data_send(&m_nus, data, len, m_conn_handle);
+}
+
+
+static void parse_ble_command(uint8_t* cmd, uint16_t len) {
+    if (cmd[0] == 'c') {
+        snow_slave_toggle_continuous_measurement();
+    }
+}
+
+
+
+static void nus_data_handler(ble_nus_evt_t * p_evt)
+{
+    uint8_t* rx_buf;
+
+
+    if (p_evt->type == BLE_NUS_EVT_RX_DATA)
+    {
+        uint32_t err_code;
+        uint16_t len = p_evt->params.rx_data.length;
+
+        NRF_LOG_DEBUG("Received data from BLE NUS. Writing data on UART.");
+        NRF_LOG_HEXDUMP_DEBUG(p_evt->params.rx_data.p_data, len);
+
+        rx_buf = p_evt->params.rx_data.p_data;      
+
+        parse_ble_command(rx_buf, len);
+    }
+
+}
+
+
+
 
 
 
@@ -233,6 +273,8 @@ static void services_init(void) {
     uint32_t         err_code;
     nrf_ble_qwr_init_t qwr_init = {0};
 
+    ble_nus_init_t  nus_init;
+
     // Initialize Queued Write Module.
     qwr_init.error_handler = nrf_qwr_error_handler;
 
@@ -241,7 +283,12 @@ static void services_init(void) {
 
     // Init services here
     //
-    err_code = ble_snow_service_init(&m_snow_service);
+    //err_code = ble_snow_service_init(&m_snow_service);
+
+    memset(&nus_init, 0, sizeof(nus_init));
+    nus_init.data_handler = nus_data_handler;
+
+    err_code = ble_nus_init(&m_nus, &nus_init);
 }
 
 
@@ -635,6 +682,8 @@ static void advertising_start(bool erase_bonds) {
 ble_snow_t* ble_snow_service_get() {
     return &m_snow_service;
 }
+
+
 
 
 uint32_t snow_ble_init() {

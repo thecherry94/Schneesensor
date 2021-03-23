@@ -224,6 +224,24 @@ snow_adxl362_ret_code_t snow_adxl362_read_accl(snow_adxl362_device* adxl_device,
 }
 
 
+snow_adxl362_ret_code_t snow_adxl362_read_accl_raw(snow_adxl362_device* adxl_device, snow_accl_xyz_raw_t* accl) {
+    uint8_t tx_buf[] = {
+        SNOW_ADXL362_READ,        // Command read
+        SNOW_ADXL362_REG_X_LSB    // Burst read from X-Axis LSB Register to Z-Axis MSB Register
+    };
+    
+    uint8_t rx_buf[8] = {0};
+
+    snow_adxl362_ret_code_t err_code = m_spi_transfer_func(tx_buf, 2, rx_buf, 8, adxl_device->cs_pin);
+
+    accl->x = (rx_buf[3] << 8) | rx_buf[2];
+    accl->y = (rx_buf[5] << 8) | rx_buf[4];
+    accl->z = (rx_buf[7] << 8) | rx_buf[6]; 
+
+    return err_code;
+}
+
+
 snow_adxl362_ret_code_t snow_adxl362_read_temp(snow_adxl362_device* adxl_device, float* temp) {
     uint8_t tx_buf[] = {
         SNOW_ADXL362_READ,

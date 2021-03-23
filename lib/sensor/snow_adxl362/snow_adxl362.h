@@ -68,6 +68,12 @@ typedef struct snow_accl_xyz_t {
     float z;
 } snow_accl_xyz_t;
 
+typedef struct snow_accl_xyz_raw_t {
+    uint16_t x;
+    uint16_t y;
+    uint16_t z;
+} snow_accl_xyz_raw_t;
+
 
 
 typedef uint8_t (*snow_spi_transfer_t)(uint8_t* tx_buf, uint8_t tx_len, uint8_t* rx_buf, uint8_t rx_len, uint8_t cs_pin);
@@ -86,6 +92,7 @@ snow_adxl362_ret_code_t nrf_spi_transfer(uint8_t* tx_buf, uint8_t tx_len, uint8_
 snow_adxl362_ret_code_t snow_adxl362_init(snow_adxl362_device* adxl_device, nrf_drv_spi_t* spi_instance, snow_adxl362_spi_transfer_t spi_transfer_func_ptr);
 snow_adxl362_ret_code_t snow_adxl362_configure(snow_adxl362_device* adxl_device, bool check_config);
 snow_adxl362_ret_code_t snow_adxl362_read_accl(snow_adxl362_device* adxl_device, snow_accl_xyz_t* accl);
+snow_adxl362_ret_code_t snow_adxl362_read_accl_raw(snow_adxl362_device* adxl_device, snow_accl_xyz_raw_t* accl);
 snow_adxl362_ret_code_t snow_adxl362_read_temp(snow_adxl362_device* adxl_device, float* temp);
 snow_adxl362_ret_code_t snow_adxl362_read_config(snow_adxl362_device* adxl_device, snow_adxl362_config_t* cfg);
 snow_adxl362_ret_code_t snow_adxl362_soft_reset(snow_adxl362_device* adxl_device, bool wait_recommended);

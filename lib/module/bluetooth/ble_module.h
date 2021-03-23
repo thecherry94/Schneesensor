@@ -52,13 +52,7 @@ typedef void (*ble_callback_t)(void);
 
 
 uint32_t snow_ble_init();
-ble_snow_t* ble_snow_service_get();
-
-
-
-
-void set_on_ble_connected(ble_callback_t cb);
-void set_on_ble_disconnected(ble_callback_t cb);
+uint32_t snow_ble_data_send(uint8_t* data, uint16_t* len);
 
 
 

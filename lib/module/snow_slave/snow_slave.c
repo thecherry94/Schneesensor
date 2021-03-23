@@ -39,43 +39,33 @@ static const nrf_drv_spi_t m_spi = NRF_DRV_SPI_INSTANCE(SPI_INSTANCE_ID);
 ble_snow_t* ble_snow_sh = NULL;
 
 
-struct snow_adxl362_device   adxl_dev1;
-struct snow_adxl362_device   adxl_dev2;
-struct snow_bme680_device    bme_dev;
+#define GPS_TIMER_INTERVAL    APP_TIMER_TICKS(10000)
+#define BME_TIMER_INTERVAL    APP_TIMER_TICKS(150)
+#define ACCL_TIMER_INTERVAL   APP_TIMER_TICKS(150)
+#define CONT_TIMER_INTERVAL   APP_TIMER_TICKS(250)
 
 
-struct bme680_field_data data;
-struct snow_accl_xyz_t accl = {0};
-float temp = 0;
+struct snow_adxl362_device   m_adxl_dev1;
+struct snow_adxl362_device   m_adxl_dev2;
+struct snow_bme680_device    m_bme_dev;
+
+struct bme680_field_data              m_bme_data;
+struct snow_gps_position_information  m_gps_pos;
+struct snow_accl_xyz_raw_t            m_accl;
 
 
-#define ACCL_TIMER_INTERVAL       APP_TIMER_TICKS(1000)
-#define BME_TIMER_INTERVAL        APP_TIMER_TICKS(1000)
-#define GPS_TIMER_INTERVAL        APP_TIMER_TICKS(5000)
-
-
-
-APP_TIMER_DEF(m_accl_timer_id);
-APP_TIMER_DEF(m_bme_timer_id);
 APP_TIMER_DEF(m_gps_timer_id);
+APP_TIMER_DEF(m_bme_timer_id);
+APP_TIMER_DEF(m_accl_timer_id);
+APP_TIMER_DEF(m_cont_timer_id);
 
 
-static void ble_connected() {
-    app_timer_start(m_accl_timer_id, ACCL_TIMER_INTERVAL, NULL);
-    app_timer_start(m_bme_timer_id, BME_TIMER_INTERVAL, NULL);
-    app_timer_start(m_gps_timer_id, GPS_TIMER_INTERVAL, NULL);
-}
-
-static void ble_disconnected() {
-    app_timer_stop(m_accl_timer_id);
-    app_timer_stop(m_bme_timer_id);
-    app_timer_stop(m_gps_timer_id);
-}
+bool m_continuous = false;
 
 
 static void timer_accl_timer_timeout_handler(void* context) {
-    snow_adxl362_read_accl(&adxl_dev1, &accl);
-    snow_adxl362_read_temp(&adxl_dev1, &temp);
+    snow_adxl362_read_accl(&m_adxl_dev1, &m_accl);
+    //snow_adxl362_read_temp(&m_adxl_dev1, &temp);
     //printf("ADXL362_1\t=> X: %.2f | Y:%.2f | Z: %.2f | T: %.2f\n", accl.x, accl.y, accl.z, temp);
 
     //snow_adxl362_read_accl(&device2, &accl);
@@ -84,25 +74,67 @@ static void timer_accl_timer_timeout_handler(void* context) {
 }
 
 static void timer_bme_timer_timeout_handler(void* context) {
-    snow_bme680_measure(&bme_dev, &data);
+    snow_bme680_measure(&m_bme_dev, &m_bme_data);
     //printf("BME680   \t=> T: %.2f degC, P: %.2f hPa, H: %.2f %%rH\n\n", data.temperature / 100.0f,
     //        data.pressure / 100.0f, data.humidity / 1000.0f);
 
-    ble_snow_service_pressure_update(ble_snow_sh, &data);
-    ble_snow_service_temperature_update(ble_snow_sh, &data);
-    ble_snow_service_humidity_update(ble_snow_sh, &data);
+    
 }
+
 
 static void timer_gps_timer_timeout_handler(void* context) {
-    snow_gps_read_data();
-    snow_gps_position_information gps_info;
-    snow_gps_get_position(&gps_info);
-
-    ble_snow_service_position_update(ble_snow_sh, &gps_info);
-    ble_snow_service_time_update(ble_snow_sh, &gps_info);
-    ble_snow_service_date_update(ble_snow_sh, &gps_info);
+    snow_gps_get_position(&m_gps_pos);
 }
 
+
+static void timer_cont_timer_timeout_handler(void* context) {
+    uint8_t tx_buf[17];
+
+    tx_buf[0] = 'c';
+
+    tx_buf[1] = (uint8_t)(m_bme_data.temperature & 0x0F);
+    tx_buf[2] = (uint8_t)((m_bme_data.temperature >> 8) & 0x0F);
+    
+    tx_buf[3] = (uint8_t)(m_bme_data.pressure & 0x0F);
+    tx_buf[4] = (uint8_t)((m_bme_data.pressure >> 8) & 0x0F);
+    tx_buf[5] = (uint8_t)((m_bme_data.pressure >> 16) & 0x0F);
+    tx_buf[6] = (uint8_t)((m_bme_data.pressure >> 24) & 0x0F);
+
+    tx_buf[7] = (uint8_t)(m_bme_data.humidity & 0x0F);
+    tx_buf[8] = (uint8_t)((m_bme_data.humidity >> 8) & 0x0F);
+    tx_buf[9] = (uint8_t)((m_bme_data.humidity >> 16) & 0x0F);
+    tx_buf[10] = (uint8_t)((m_bme_data.humidity >> 24) & 0x0F);
+
+
+
+    tx_buf[11] = (uint8_t)(m_accl.x & 0x0F);
+    tx_buf[12] = (uint8_t)((m_accl.x >> 8) & 0x0F);
+
+    tx_buf[13] = (uint8_t)(m_accl.y & 0x0F);
+    tx_buf[14] = (uint8_t)((m_accl.y >> 8) & 0x0F);
+
+    tx_buf[15] = (uint8_t)(m_accl.z & 0x0F);
+    tx_buf[16] = (uint8_t)((m_accl.z >> 8) & 0x0F);
+
+    snow_ble_data_send(tx_buf, 17);
+}
+
+
+void snow_slave_toggle_continuous_measurement() {
+    m_continuous = !m_continuous;
+
+    if (m_continuous) {
+        app_timer_start(m_gps_timer_id, GPS_TIMER_INTERVAL, NULL);
+        app_timer_start(m_bme_timer_id, BME_TIMER_INTERVAL, NULL);
+        app_timer_start(m_accl_timer_id, ACCL_TIMER_INTERVAL, NULL);
+        app_timer_start(m_cont_timer_id, CONT_TIMER_INTERVAL, NULL);
+    } else {
+        app_timer_stop(m_gps_timer_id);
+        app_timer_stop(m_bme_timer_id);
+        app_timer_stop(m_accl_timer_id);
+        app_timer_stop(m_cont_timer_id);
+    }
+}
 
 
 uint8_t snow_slave_init() {
@@ -183,6 +215,22 @@ ret_code_t twi_init() {
     return err_code;
 }
 
+
+
+ret_code_t sensors_init() {
+    snow_bme680_init(&m_bme_dev, &m_twi, 20);
+    snow_bme680_configure(&m_bme_dev, NULL);
+
+    snow_adxl362_init(&m_adxl_dev1, &m_spi, nrf_spi_transfer);
+    snow_adxl362_soft_reset(&m_adxl_dev1, true);
+    snow_adxl362_configure(&m_adxl_dev1, true);
+
+    snow_adxl362_init(&m_adxl_dev2, &m_spi, nrf_spi_transfer);
+    snow_adxl362_soft_reset(&m_adxl_dev2, true);
+    snow_adxl362_configure(&m_adxl_dev2, true);
+
+    snow_gps_init(SNOW_GPS_I2C_ADDR, &m_twi);
+}
 
 
 
@@ -282,51 +330,14 @@ void test_gps() {
 
 
 void test_ble() {
-    uint32_t err_code = snow_ble_init();
-    ble_snow_sh = ble_snow_service_get();
-
-    set_on_ble_connected(ble_connected);
-    set_on_ble_disconnected(ble_disconnected);
-
-    adxl_dev1 = snow_adxl362_create_device(23, NULL);
-
-    snow_adxl362_init(&adxl_dev1, &m_spi, nrf_spi_transfer);
-    snow_adxl362_soft_reset(&adxl_dev1, true);
-    if (snow_adxl362_configure(&adxl_dev1, true) == SNOW_ADXL362_CONFIGURATION_ERROR) {
-        printf("ADXL362 config error (cs_pin=%d)\n", adxl_dev1.cs_pin);
-    }
-
-    snow_adxl362_device adxl_dev2 = snow_adxl362_create_device(38, NULL);
-
-    snow_adxl362_init(&adxl_dev2, &m_spi, &nrf_spi_transfer);
-    snow_adxl362_soft_reset(&adxl_dev2, true);
-    if (snow_adxl362_configure(&adxl_dev2, true) == SNOW_ADXL362_CONFIGURATION_ERROR) {
-        printf("ADXL362 config error (cs_pin=%d)\n", adxl_dev2.cs_pin);
-    }
-
-    // Init BME680
-    bme_dev;
-
-    uint16_t meas_period = 0;
-
-    snow_bme680_init(&bme_dev, &m_twi, 20);
-    snow_bme680_configure(&bme_dev, &meas_period);
-
-    // Init GPS
-    snow_gps_init(SNOW_GPS_I2C_ADDR, &m_twi);
-
+    uint32_t err_code = snow_ble_init();  
+    err_code = sensors_init();
 
     app_timer_create(&m_accl_timer_id, APP_TIMER_MODE_REPEATED, timer_accl_timer_timeout_handler);
     app_timer_create(&m_bme_timer_id, APP_TIMER_MODE_REPEATED, timer_bme_timer_timeout_handler);
     app_timer_create(&m_gps_timer_id, APP_TIMER_MODE_REPEATED, timer_gps_timer_timeout_handler);
 
-    //app_timer_start(m_accl_timer_id, ACCL_TIMER_INTERVAL, NULL);
-    //app_timer_start(m_bme_timer_id, BME_TIMER_INTERVAL, NULL);
-    //app_timer_start(m_gps_timer_id, GPS_TIMER_INTERVAL, NULL);
-
-    for (;;) {
-        
-    }
+    for (;;) { }
 }
 
 

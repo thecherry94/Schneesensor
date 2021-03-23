@@ -425,3 +425,86 @@
 #ifndef NRF_SDH_BLE_GAP_EVENT_LENGTH
 #define NRF_SDH_BLE_GAP_EVENT_LENGTH 100
 #endif
+
+
+
+
+// <o> BLE_NUS_BLE_OBSERVER_PRIO  
+// <i> Priority with which BLE events are dispatched to the UART Service.
+
+#ifndef BLE_NUS_BLE_OBSERVER_PRIO
+#define BLE_NUS_BLE_OBSERVER_PRIO 2
+#endif
+
+// <o> BLE_NUS_C_BLE_OBSERVER_PRIO  
+// <i> Priority with which BLE events are dispatched to the UART Central Service.
+
+#ifndef BLE_NUS_C_BLE_OBSERVER_PRIO
+#define BLE_NUS_C_BLE_OBSERVER_PRIO 2
+#endif
+
+
+// <q> BLE_NUS_C_ENABLED  - ble_nus_c - Nordic UART Central Service
+ 
+
+#ifndef BLE_NUS_C_ENABLED
+#define BLE_NUS_C_ENABLED 0
+#endif
+
+// <e> BLE_NUS_ENABLED - ble_nus - Nordic UART Service
+//==========================================================
+#ifndef BLE_NUS_ENABLED
+#define BLE_NUS_ENABLED 1
+#endif
+// <e> BLE_NUS_CONFIG_LOG_ENABLED - Enables logging in the module.
+//==========================================================
+#ifndef BLE_NUS_CONFIG_LOG_ENABLED
+#define BLE_NUS_CONFIG_LOG_ENABLED 0
+#endif
+// <o> BLE_NUS_CONFIG_LOG_LEVEL  - Default Severity level
+ 
+// <0=> Off 
+// <1=> Error 
+// <2=> Warning 
+// <3=> Info 
+// <4=> Debug 
+
+#ifndef BLE_NUS_CONFIG_LOG_LEVEL
+#define BLE_NUS_CONFIG_LOG_LEVEL 3
+#endif
+
+// <o> BLE_NUS_CONFIG_INFO_COLOR  - ANSI escape code prefix.
+ 
+// <0=> Default 
+// <1=> Black 
+// <2=> Red 
+// <3=> Green 
+// <4=> Yellow 
+// <5=> Blue 
+// <6=> Magenta 
+// <7=> Cyan 
+// <8=> White 
+
+#ifndef BLE_NUS_CONFIG_INFO_COLOR
+#define BLE_NUS_CONFIG_INFO_COLOR 0
+#endif
+
+// <o> BLE_NUS_CONFIG_DEBUG_COLOR  - ANSI escape code prefix.
+ 
+// <0=> Default 
+// <1=> Black 
+// <2=> Red 
+// <3=> Green 
+// <4=> Yellow 
+// <5=> Blue 
+// <6=> Magenta 
+// <7=> Cyan 
+// <8=> White 
+
+#ifndef BLE_NUS_CONFIG_DEBUG_COLOR
+#define BLE_NUS_CONFIG_DEBUG_COLOR 0
+#endif
+
+// </e>
+
+// </e>
