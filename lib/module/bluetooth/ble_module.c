@@ -71,8 +71,9 @@ static ble_uuid_t m_adv_uuids[] = {
 static void advertising_start(bool erase_bonds);
 
 
-uint32_t snow_ble_data_send(uint8_t* data, uint16_t* len) {
-    return ble_nus_data_send(&m_nus, data, len, m_conn_handle);
+uint32_t snow_ble_data_send(uint8_t* data, uint16_t len) {
+    uint32_t err_code = ble_nus_data_send(&m_nus, data, &len, m_conn_handle);
+    return err_code;
 }
 
 
@@ -89,19 +90,23 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
     uint8_t* rx_buf;
 
 
-    if (p_evt->type == BLE_NUS_EVT_RX_DATA)
-    {
-        uint32_t err_code;
-        uint16_t len = p_evt->params.rx_data.length;
+    switch (p_evt->type) {
+        case BLE_NUS_EVT_RX_DATA: {
+            uint32_t err_code;
+            uint16_t len = p_evt->params.rx_data.length;
 
-        NRF_LOG_DEBUG("Received data from BLE NUS. Writing data on UART.");
-        NRF_LOG_HEXDUMP_DEBUG(p_evt->params.rx_data.p_data, len);
+            NRF_LOG_DEBUG("Received data from BLE NUS. Writing data on UART.");
+            NRF_LOG_HEXDUMP_DEBUG(p_evt->params.rx_data.p_data, len);
 
-        rx_buf = p_evt->params.rx_data.p_data;      
+            rx_buf = p_evt->params.rx_data.p_data;      
 
-        parse_ble_command(rx_buf, len);
+            parse_ble_command(rx_buf, len);
+        } break;
+
+        case BLE_NUS_EVT_TX_RDY: {
+            printf("LOL\n");
+        } break;
     }
-
 }
 
 
@@ -465,6 +470,10 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             APP_ERROR_CHECK(err_code);
             break;
 
+        case BLE_GATTS_EVT_HVN_TX_COMPLETE:
+            APP_ERROR_CHECK(err_code);
+            break;
+
         default:
             // No implementation needed.
             break;
@@ -493,10 +502,10 @@ static void ble_stack_init(void) {
     APP_ERROR_CHECK(err_code);
 
     // Register a handler for BLE events.
-    NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
+    NRF_SDH_BLE_OBSERVER(m_ble_observer, 2, ble_evt_handler, NULL);
 
     //TODO OUR_JOB: Step 3.C Set up a BLE event observer to call ble_our_service_on_ble_evt() to do housekeeping of ble connections related to our service and characteristics.
-    NRF_SDH_BLE_OBSERVER(m_snow_service_observer, APP_BLE_OBSERVER_PRIO, ble_snow_service_on_ble_evt, (void*) &m_snow_service);
+    //NRF_SDH_BLE_OBSERVER(m_snow_service_observer, APP_BLE_OBSERVER_PRIO, ble_snow_service_on_ble_evt, (void*) &m_snow_service);
 }
 
 
@@ -690,7 +699,7 @@ uint32_t snow_ble_init() {
     bool erase_bonds;
 
      // Initialize.
-    //log_init();
+    log_init();
     timers_init();
     //buttons_leds_init(&erase_bonds);
     //power_management_init();

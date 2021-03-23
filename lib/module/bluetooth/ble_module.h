@@ -52,7 +52,7 @@ typedef void (*ble_callback_t)(void);
 
 
 uint32_t snow_ble_init();
-uint32_t snow_ble_data_send(uint8_t* data, uint16_t* len);
+uint32_t snow_ble_data_send(uint8_t* data, uint16_t len);
 
 
 
