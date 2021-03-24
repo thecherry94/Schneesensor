@@ -22,6 +22,8 @@
 
 #include "app_timer.h"
 
+#include "ble_nus.h"
+
 
 #include "snow_slave.h"
 #include "ble_module.h"
@@ -63,6 +65,10 @@ uint16_t m_meas_period = 0;
 bool m_continuous = false;
 
 
+volatile bool m_ble_send_flag = false;
+volatile uint8_t m_ble_tx_buf[17];
+
+
 static void timer_accl_timer_timeout_handler(void* context) {
     snow_adxl362_read_accl_raw(&m_adxl_dev1, &m_accl);
     //snow_adxl362_read_temp(&m_adxl_dev1, &temp);
@@ -90,35 +96,37 @@ static void timer_gps_timer_timeout_handler(void* context) {
 
 
 static void timer_cont_timer_timeout_handler(void* context) {
-    uint8_t tx_buf[17];
+    //if (m_ble_send_flag)
+     //   return;
 
-    tx_buf[0] = 'c';
+    m_ble_tx_buf[0] = 'c';
 
-    tx_buf[1] = (uint8_t)(m_bme_data.temperature);
-    tx_buf[2] = (uint8_t)((m_bme_data.temperature >> 8));
+    m_ble_tx_buf[1] = (uint8_t)(m_bme_data.temperature);
+    m_ble_tx_buf[2] = (uint8_t)((m_bme_data.temperature >> 8));
     
-    tx_buf[3] = (uint8_t)(m_bme_data.pressure);
-    tx_buf[4] = (uint8_t)((m_bme_data.pressure >> 8));
-    tx_buf[5] = (uint8_t)((m_bme_data.pressure >> 16));
-    tx_buf[6] = (uint8_t)((m_bme_data.pressure >> 24));
+    m_ble_tx_buf[3] = (uint8_t)(m_bme_data.pressure);
+    m_ble_tx_buf[4] = (uint8_t)((m_bme_data.pressure >> 8));
+    m_ble_tx_buf[5] = (uint8_t)((m_bme_data.pressure >> 16));
+    m_ble_tx_buf[6] = (uint8_t)((m_bme_data.pressure >> 24));
 
-    tx_buf[7] = (uint8_t)(m_bme_data.humidity);
-    tx_buf[8] = (uint8_t)((m_bme_data.humidity >> 8));
-    tx_buf[9] = (uint8_t)((m_bme_data.humidity >> 16));
-    tx_buf[10] = (uint8_t)((m_bme_data.humidity >> 24) );
+    m_ble_tx_buf[7] = (uint8_t)(m_bme_data.humidity);
+    m_ble_tx_buf[8] = (uint8_t)((m_bme_data.humidity >> 8));
+    m_ble_tx_buf[9] = (uint8_t)((m_bme_data.humidity >> 16));
+    m_ble_tx_buf[10] = (uint8_t)((m_bme_data.humidity >> 24) );
 
 
 
-    tx_buf[11] = (uint8_t)(m_accl.x);
-    tx_buf[12] = (uint8_t)((m_accl.x >> 8));
+    m_ble_tx_buf[11] = (uint8_t)(m_accl.x);
+    m_ble_tx_buf[12] = (uint8_t)((m_accl.x >> 8));
 
-    tx_buf[13] = (uint8_t)(m_accl.y);
-    tx_buf[14] = (uint8_t)((m_accl.y >> 8));
+    m_ble_tx_buf[13] = (uint8_t)(m_accl.y);
+    m_ble_tx_buf[14] = (uint8_t)((m_accl.y >> 8));
 
-    tx_buf[15] = (uint8_t)(m_accl.z);
-    tx_buf[16] = (uint8_t)((m_accl.z >> 8));
+    m_ble_tx_buf[15] = (uint8_t)(m_accl.z);
+    m_ble_tx_buf[16] = (uint8_t)((m_accl.z >> 8));
 
-    snow_ble_data_send(tx_buf, 17);
+    snow_ble_data_send(m_ble_tx_buf, 17);
+    m_ble_send_flag = true;
 }
 
 
@@ -336,12 +344,28 @@ void test_gps() {
 void test_ble() {
     uint32_t err_code = snow_ble_init();  
 
+    //NRF_CLOCK->TASKS_LFCLKSTART = 1;
+    //while(NRF_CLOCK->EVENTS_LFCLKSTARTED != 1);
+    
+    //err_code = nrf_drv_clock_init();
+    //APP_ERROR_CHECK(err_code);
+    nrf_drv_clock_lfclk_request(NULL);
+
     app_timer_create(&m_accl_timer_id, APP_TIMER_MODE_REPEATED, timer_accl_timer_timeout_handler);
     app_timer_create(&m_bme_timer_id, APP_TIMER_MODE_REPEATED, timer_bme_timer_timeout_handler);
     app_timer_create(&m_gps_timer_id, APP_TIMER_MODE_REPEATED, timer_gps_timer_timeout_handler);
     app_timer_create(&m_cont_timer_id, APP_TIMER_MODE_REPEATED, timer_cont_timer_timeout_handler);
 
     snow_gps_read_data();
+
+    while (true) {
+        /*if (m_ble_send_flag) {
+            do {
+                err_code = snow_ble_data_send(m_ble_tx_buf, 17);
+            } while (err_code == NRF_ERROR_RESOURCES);
+            m_ble_send_flag = false;
+        }*/
+    }
 }
 
 

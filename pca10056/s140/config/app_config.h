@@ -505,6 +505,11 @@
 #define BLE_NUS_CONFIG_DEBUG_COLOR 0
 #endif
 
+
+#ifndef NRF_SDH_BLE_GAP_DATA_LENGTH
+#define NRF_SDH_BLE_GAP_DATA_LENGTH 251
+#endif
+
 // </e>
 
 // </e>

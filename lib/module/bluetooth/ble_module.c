@@ -72,8 +72,7 @@ static void advertising_start(bool erase_bonds);
 
 
 uint32_t snow_ble_data_send(uint8_t* data, uint16_t len) {
-    uint32_t err_code = ble_nus_data_send(&m_nus, data, &len, m_conn_handle);
-    return err_code;
+    return ble_nus_data_send(&m_nus, data, &len, m_conn_handle);
 }
 
 
@@ -104,7 +103,7 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
         } break;
 
         case BLE_NUS_EVT_TX_RDY: {
-            printf("LOL\n");
+            
         } break;
     }
 }
