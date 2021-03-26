@@ -123,6 +123,10 @@ snow_adxl362_ret_code_t nrf_spi_transfer(uint8_t* tx_buf, uint8_t tx_len, uint8_
 // Bluetooth functions
 //
 
+void snow_slave_ble_on_connected();
+void snow_slave_ble_on_disconnected();
+void snow_slave_ble_on_tx_done();
+
 
 
 #endif

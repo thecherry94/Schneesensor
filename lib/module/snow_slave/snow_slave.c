@@ -62,88 +62,77 @@ APP_TIMER_DEF(m_cont_timer_id);
 
 
 uint16_t m_meas_period = 0;
-bool m_continuous = false;
+volatile bool m_continuous = false;
+volatile bool m_toggle_continuous = false;
+volatile bool m_tx_ready = false;
+volatile bool m_ble_connected = false;
+
+volatile bool m_measure_bme = false;
+volatile bool m_get_position = false;
+volatile bool m_measure_accl = false;
 
 
 volatile bool m_ble_send_flag = false;
+volatile bool m_ble_tx_completed = false;
 volatile uint8_t m_ble_tx_buf[17];
 
 
 static void timer_accl_timer_timeout_handler(void* context) {
-    snow_adxl362_read_accl_raw(&m_adxl_dev1, &m_accl);
-    //snow_adxl362_read_temp(&m_adxl_dev1, &temp);
-    printf("ADXL362_1\t=> X: %.2f | Y:%.2f | Z: %.2f\n", m_accl.x, m_accl.y, m_accl.z);
+    
 
     //snow_adxl362_read_accl(&device2, &accl);
     //snow_adxl362_read_temp(&device2, &temp);
     //printf("ADXL362_2\t=> X: %.2f | Y:%.2f | Z: %.2f | T: %.2f\n", accl.x, accl.y, accl.z, temp);
+
+    m_measure_accl = true;
 }
 
 static void timer_bme_timer_timeout_handler(void* context) {
-    snow_bme680_measure(&m_bme_dev, &m_bme_data);
-    printf("BME680   \t=> T: %.2f degC, P: %.2f hPa, H: %.2f %%rH\n\n", m_bme_data.temperature / 100.0f,
-           m_bme_data.pressure / 100.0f, m_bme_data.humidity / 1000.0f);
+    //snow_bme680_measure(&m_bme_dev, &m_bme_data);
+    //printf("BME680   \t=> T: %.2f degC, P: %.2f hPa, H: %.2f %%rH\n\n", m_bme_data.temperature / 100.0f,
+    //       m_bme_data.pressure / 100.0f, m_bme_data.humidity / 1000.0f);
 
-    
+    m_measure_bme = true;
 }
 
 
 static void timer_gps_timer_timeout_handler(void* context) {
-    snow_gps_read_data();
-    snow_gps_get_position(&m_gps_pos);
-    printf("Data valid: %s\nLongitude: %f°; Latitude: %f°\nTime: %02d:%02d:%02d\n\n", m_gps_pos.valid ? "yes" : "no", m_gps_pos.longitude, m_gps_pos.latitude, m_gps_pos.time.hours, m_gps_pos.time.minutes, m_gps_pos.time.seconds);
+    //snow_gps_read_data();
+    //snow_gps_get_position(&m_gps_pos);
+    //printf("Data valid: %s\nLongitude: %f°; Latitude: %f°\nTime: %02d:%02d:%02d\n\n", m_gps_pos.valid ? "yes" : "no", m_gps_pos.longitude, m_gps_pos.latitude, m_gps_pos.time.hours, m_gps_pos.time.minutes, m_gps_pos.time.seconds);
+    m_get_position = true;
 }
 
 
 static void timer_cont_timer_timeout_handler(void* context) {
-    //if (m_ble_send_flag)
-     //   return;
+    if (m_ble_send_flag)
+        return;
 
-    m_ble_tx_buf[0] = 'c';
-
-    m_ble_tx_buf[1] = (uint8_t)(m_bme_data.temperature);
-    m_ble_tx_buf[2] = (uint8_t)((m_bme_data.temperature >> 8));
-    
-    m_ble_tx_buf[3] = (uint8_t)(m_bme_data.pressure);
-    m_ble_tx_buf[4] = (uint8_t)((m_bme_data.pressure >> 8));
-    m_ble_tx_buf[5] = (uint8_t)((m_bme_data.pressure >> 16));
-    m_ble_tx_buf[6] = (uint8_t)((m_bme_data.pressure >> 24));
-
-    m_ble_tx_buf[7] = (uint8_t)(m_bme_data.humidity);
-    m_ble_tx_buf[8] = (uint8_t)((m_bme_data.humidity >> 8));
-    m_ble_tx_buf[9] = (uint8_t)((m_bme_data.humidity >> 16));
-    m_ble_tx_buf[10] = (uint8_t)((m_bme_data.humidity >> 24) );
-
-
-
-    m_ble_tx_buf[11] = (uint8_t)(m_accl.x);
-    m_ble_tx_buf[12] = (uint8_t)((m_accl.x >> 8));
-
-    m_ble_tx_buf[13] = (uint8_t)(m_accl.y);
-    m_ble_tx_buf[14] = (uint8_t)((m_accl.y >> 8));
-
-    m_ble_tx_buf[15] = (uint8_t)(m_accl.z);
-    m_ble_tx_buf[16] = (uint8_t)((m_accl.z >> 8));
-
-    snow_ble_data_send(m_ble_tx_buf, 17);
+    //snow_ble_data_send(m_ble_tx_buf, 17);
     m_ble_send_flag = true;
+}
+
+
+void snow_slave_ble_on_connected() {
+    m_tx_ready = true;
+    m_ble_connected = true;
+}
+
+
+void snow_slave_ble_on_disconnected() {
+    m_tx_ready = false;
+    m_ble_connected = false;
+}
+
+
+void snow_slave_ble_on_tx_done() {
+    m_tx_ready = true;
 }
 
 
 void snow_slave_toggle_continuous_measurement() {
     m_continuous = !m_continuous;
-
-    if (m_continuous) {
-        app_timer_start(m_gps_timer_id, GPS_TIMER_INTERVAL, NULL);
-        app_timer_start(m_bme_timer_id, BME_TIMER_INTERVAL, NULL);
-        app_timer_start(m_accl_timer_id, ACCL_TIMER_INTERVAL, NULL);
-        app_timer_start(m_cont_timer_id, CONT_TIMER_INTERVAL, NULL);
-    } else {
-        app_timer_stop(m_gps_timer_id);
-        app_timer_stop(m_bme_timer_id);
-        app_timer_stop(m_accl_timer_id);
-        app_timer_stop(m_cont_timer_id);
-    }
+    m_toggle_continuous = true;
 }
 
 
@@ -342,29 +331,94 @@ void test_gps() {
 
 
 void test_ble() {
-    uint32_t err_code = snow_ble_init();  
-
-    //NRF_CLOCK->TASKS_LFCLKSTART = 1;
-    //while(NRF_CLOCK->EVENTS_LFCLKSTARTED != 1);
-    
-    //err_code = nrf_drv_clock_init();
-    //APP_ERROR_CHECK(err_code);
-    nrf_drv_clock_lfclk_request(NULL);
+    ret_code_t err_code = app_timer_init();
+    err_code = snow_ble_init();  
 
     app_timer_create(&m_accl_timer_id, APP_TIMER_MODE_REPEATED, timer_accl_timer_timeout_handler);
     app_timer_create(&m_bme_timer_id, APP_TIMER_MODE_REPEATED, timer_bme_timer_timeout_handler);
     app_timer_create(&m_gps_timer_id, APP_TIMER_MODE_REPEATED, timer_gps_timer_timeout_handler);
     app_timer_create(&m_cont_timer_id, APP_TIMER_MODE_REPEATED, timer_cont_timer_timeout_handler);
-
+    
+    
     snow_gps_read_data();
 
-    while (true) {
-        /*if (m_ble_send_flag) {
-            do {
-                err_code = snow_ble_data_send(m_ble_tx_buf, 17);
-            } while (err_code == NRF_ERROR_RESOURCES);
-            m_ble_send_flag = false;
-        }*/
+    for (;;) {
+        if (m_toggle_continuous) {
+            if (m_continuous) {
+                app_timer_start(m_gps_timer_id, GPS_TIMER_INTERVAL, NULL);
+                app_timer_start(m_bme_timer_id, BME_TIMER_INTERVAL, NULL);
+                app_timer_start(m_accl_timer_id, ACCL_TIMER_INTERVAL, NULL);
+                app_timer_start(m_cont_timer_id, CONT_TIMER_INTERVAL, NULL);
+            } else {
+                app_timer_stop(m_gps_timer_id);
+                app_timer_stop(m_bme_timer_id);
+                app_timer_stop(m_accl_timer_id);
+                app_timer_stop(m_cont_timer_id);
+            }
+            m_toggle_continuous = false;
+        }
+
+        if (m_measure_accl) {
+            snow_adxl362_read_accl_raw(&m_adxl_dev1, &m_accl);
+            //snow_adxl362_read_temp(&m_adxl_dev1, &temp);
+            printf("ADXL362_1\t=> X: %.2f | Y:%.2f | Z: %.2f\n", m_accl.x, m_accl.y, m_accl.z);
+
+            m_measure_accl = false;
+        }
+
+        if (m_measure_bme) {
+            snow_bme680_measure(&m_bme_dev, &m_bme_data);
+            printf("BME680   \t=> T: %.2f degC, P: %.2f hPa, H: %.2f %%rH\n\n", m_bme_data.temperature / 100.0f,
+                m_bme_data.pressure / 100.0f, m_bme_data.humidity / 1000.0f);
+
+            m_measure_bme = false;
+        }
+
+        if (m_get_position) {
+            snow_gps_read_data();
+            snow_gps_get_position(&m_gps_pos);
+            printf("Data valid: %s\nLongitude: %f°; Latitude: %f°\nTime: %02d:%02d:%02d\n\n", m_gps_pos.valid ? "yes" : "no", m_gps_pos.longitude, m_gps_pos.latitude, m_gps_pos.time.hours, m_gps_pos.time.minutes, m_gps_pos.time.seconds);
+    
+            m_get_position = false;
+        }
+
+        if (m_ble_connected && m_tx_ready) {
+            if (m_ble_send_flag) {
+                do {
+                
+                    m_ble_tx_buf[0] = 'c';
+
+                    m_ble_tx_buf[1] = (uint8_t)(m_bme_data.temperature);
+                    m_ble_tx_buf[2] = (uint8_t)((m_bme_data.temperature >> 8));
+    
+                    m_ble_tx_buf[3] = (uint8_t)(m_bme_data.pressure);
+                    m_ble_tx_buf[4] = (uint8_t)((m_bme_data.pressure >> 8));
+                    m_ble_tx_buf[5] = (uint8_t)((m_bme_data.pressure >> 16));
+                    m_ble_tx_buf[6] = (uint8_t)((m_bme_data.pressure >> 24));
+
+                    m_ble_tx_buf[7] = (uint8_t)(m_bme_data.humidity);
+                    m_ble_tx_buf[8] = (uint8_t)((m_bme_data.humidity >> 8));
+                    m_ble_tx_buf[9] = (uint8_t)((m_bme_data.humidity >> 16));
+                    m_ble_tx_buf[10] = (uint8_t)((m_bme_data.humidity >> 24) );
+
+
+
+                    m_ble_tx_buf[11] = (uint8_t)(m_accl.x);
+                    m_ble_tx_buf[12] = (uint8_t)((m_accl.x >> 8));
+
+                    m_ble_tx_buf[13] = (uint8_t)(m_accl.y);
+                    m_ble_tx_buf[14] = (uint8_t)((m_accl.y >> 8));
+
+                    m_ble_tx_buf[15] = (uint8_t)(m_accl.z);
+                    m_ble_tx_buf[16] = (uint8_t)((m_accl.z >> 8));
+
+                    m_tx_ready = false;
+                    m_tx_ready = true;
+                    err_code = snow_ble_data_send(m_ble_tx_buf, 17);                
+                } while (err_code == NRF_ERROR_RESOURCES);
+                m_ble_send_flag = false;       
+            }
+        }
     }
 }
 

@@ -71,16 +71,14 @@ static ble_uuid_t m_adv_uuids[] = {
 static void advertising_start(bool erase_bonds);
 
 
-uint32_t snow_ble_data_send(uint8_t* data, uint16_t len) {
-    return ble_nus_data_send(&m_nus, data, &len, m_conn_handle);
-}
-
 
 static void parse_ble_command(uint8_t* cmd, uint16_t len) {
     if (cmd[0] == 'c') {
         snow_slave_toggle_continuous_measurement();
     }
 }
+
+
 
 
 
@@ -109,6 +107,10 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
 }
 
 
+
+uint32_t snow_ble_data_send(uint8_t* data, uint16_t len) {
+    return ble_nus_data_send(&m_nus, data, &len, m_conn_handle);
+}
 
 
 
@@ -206,13 +208,11 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
  */
 static void timers_init(void) {
     // Initialize timer module.
-    ret_code_t err_code = app_timer_init();
-    APP_ERROR_CHECK(err_code);
-
+    
 
     // Add timers
     //
-    app_timer_create(&m_snow_timer_id, APP_TIMER_MODE_REPEATED, timer_snow_timeout_handler);
+    //app_timer_create(&m_snow_timer_id, APP_TIMER_MODE_REPEATED, timer_snow_timeout_handler);
 
 }
 
@@ -247,13 +247,29 @@ static void gap_params_init(void) {
 }
 
 
+/**@brief Function for handling events from the GATT library. */
+void gatt_evt_handler(nrf_ble_gatt_t * p_gatt, nrf_ble_gatt_evt_t const * p_evt)
+{
+    if ((m_conn_handle == p_evt->conn_handle) && (p_evt->evt_id == NRF_BLE_GATT_EVT_ATT_MTU_UPDATED))
+    {
+        m_ble_nus_max_data_len = p_evt->params.att_mtu_effective - OPCODE_LENGTH - HANDLE_LENGTH;
+        NRF_LOG_INFO("Data len is set to 0x%X(%d)", m_ble_nus_max_data_len, m_ble_nus_max_data_len);
+    }
+    NRF_LOG_DEBUG("ATT MTU exchange completed. central 0x%x peripheral 0x%x",
+                  p_gatt->att_mtu_desired_central,
+                  p_gatt->att_mtu_desired_periph);
+}
+
 
 
 /**@brief Function for initializing the GATT module.
  */
 static void gatt_init(void)
 {
-    ret_code_t err_code = nrf_ble_gatt_init(&m_gatt, NULL);
+    ret_code_t err_code = nrf_ble_gatt_init(&m_gatt, gatt_evt_handler);
+    APP_ERROR_CHECK(err_code);
+
+    err_code = nrf_ble_gatt_att_mtu_periph_set(&m_gatt, NRF_SDH_BLE_GATT_MAX_MTU_SIZE);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -354,7 +370,7 @@ static void conn_params_init(void) {
 /**@brief Function for starting timers.
  */
 static void application_timers_start(void) {
-    app_timer_start(m_snow_timer_id, SNOW_TIMER_INTERVAL, NULL); 
+    //app_timer_start(m_snow_timer_id, SNOW_TIMER_INTERVAL, NULL); 
 }
 
 
@@ -422,8 +438,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             NRF_LOG_INFO("Disconnected.");
             // LED indication will be changed when advertising starts.
  
-            if (cb_on_ble_disconnected != NULL)
-                cb_on_ble_disconnected();
+            snow_slave_ble_on_disconnected();
+            m_conn_handle = BLE_CONN_HANDLE_INVALID;
 
             break;
 
@@ -437,9 +453,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 
             //TODO When connected; start our timer to start regular temperature measurements
             //app_timer_start(m_our_char_timer_id, OUR_CHAR_TIMER_INTERVAL, NULL);
-            if (cb_on_ble_connected != NULL)
-                cb_on_ble_connected();
-            break;
+            
+            snow_slave_ble_on_connected();
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
         {
@@ -470,7 +485,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             break;
 
         case BLE_GATTS_EVT_HVN_TX_COMPLETE:
-            APP_ERROR_CHECK(err_code);
+            snow_slave_ble_on_tx_done();
             break;
 
         default:
