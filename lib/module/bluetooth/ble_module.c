@@ -1,17 +1,37 @@
 #include "ble_module.h"
 
+#include "nordic_common.h"
+#include "nrf.h"
+#include "app_error.h"
 #include "ble.h"
 #include "ble_hci.h"
 #include "ble_srv_common.h"
 #include "ble_advdata.h"
 #include "ble_advertising.h"
 #include "ble_conn_params.h"
+#include "nrf_ble_gatt.h"
+#include "nrf_sdh.h"
+#include "nrf_sdh_soc.h"
+#include "nrf_sdh_ble.h"
+#include "app_timer.h"
+#include "peer_manager.h"
+#include "peer_manager_handler.h"
+#include "bsp_btn_ble.h"
+#include "ble_conn_state.h"
+#include "nrf_ble_gatt.h"
+#include "nrf_ble_qwr.h"
+#include "nrf_pwr_mgmt.h"
+#include "ble_nus.h"
 
-#include "ble_gps_service.h"
-#include "ble_air_service.h"
+#include "nrf_log.h"
+#include "nrf_log_ctrl.h"
+#include "nrf_log_default_backends.h"
 
-#include "lib/sensor/snow_gps/snow_gps.h"
-#include "lib/sensor/snow_bme680/bme680.h""
+#include "ble_snow_service.h"
+
+#include "snow_slave.h"
+#include "snow_gps.h"
+#include "bme680.h"
 
 // TODO
 // - Define app timers for service updates
@@ -21,53 +41,77 @@ NRF_BLE_GATT_DEF(m_gatt);
 NRF_BLE_QWR_DEF(m_qwr);
 BLE_ADVERTISING_DEF(m_adv);
 
-static uint16_t m_conn_handle = BLUE_CONN_HANDLE_INVALID
+BLE_NUS_DEF(m_nus, NRF_SDH_BLE_TOTAL_LINK_COUNT);
+
+ble_callback_t cb_on_ble_connected;
+ble_callback_t cb_on_ble_disconnected;
 
 
-ble_gps_t m_gps_service;
-ble_air_t m_air_service;
+static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;
+static uint16_t m_ble_nus_max_data_len = BLE_GATT_ATT_MTU_DEFAULT - 3;
 
 
-APP_TIMER_DEF(m_gps_timer_id);
-APP_TIMER_DEF(m_air_timer_id);
-APP_TIMER_DEF(m_accl_timer_id);
+ble_snow_t m_snow_service;
+
+APP_TIMER_DEF(m_snow_timer_id);
+#define SNOW_TIMER_INTERVAL    APP_TIMER_TICKS(1000)
 
 
 
-#define GPS_TIMER_INTERVAL    APP_TIMER_TICKS(1000);
-#define AIR_TIMER_INTERVAL    APP_TIMER_TICKS(1000);
-#define ACCL_TIMER_INTERVAL   APP_TIMER_TICKS(1000);
-
-
-static void timer_gps_timeout_handler(void* context) {
-    snow_gps_position_information* gps_info = NULL; // TODO get GPS value
-    ble_gps_service_position_update(&m_gps_service, gps_info);
+static void timer_snow_timeout_handler(void* context) {
 }
-
-
-static void timer_air_timeout_handler(void* context) {
-    bme680_field_data* bme_data = NULL; // TODO get bme data
-    ble_air_service_humidity_update(&m_air_service, bme_data);
-    ble_air_service_temperature_update(&m_air_service, bme_data);
-    ble_air_service_pressure_update(&m_air_service, bme_data);
-}
-
-
-static void timer_accl_timeout_handler(void* context) {
-    // Update ACCL BLE service characteristics here
-    //
-}
-
 
 // Add services to advertising here
 //
 static ble_uuid_t m_adv_uuids[] = {
-    { BLE_UUID_GPS_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN },
-    { BLE_UUID_AIR_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN }//,
-    //{ BLE_UUID_ACCL_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN }
-}
+    { BLE_UUID_NUS_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN }
+    //{ BLE_UUID_SNOW_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN }
+};
 
 static void advertising_start(bool erase_bonds);
+
+
+
+static void parse_ble_command(uint8_t* cmd, uint16_t len) {
+    if (cmd[0] == 'c') {
+        snow_slave_toggle_continuous_measurement();
+    }
+}
+
+
+
+
+
+static void nus_data_handler(ble_nus_evt_t * p_evt)
+{
+    uint8_t* rx_buf;
+
+
+    switch (p_evt->type) {
+        case BLE_NUS_EVT_RX_DATA: {
+            uint32_t err_code;
+            uint16_t len = p_evt->params.rx_data.length;
+
+            NRF_LOG_DEBUG("Received data from BLE NUS. Writing data on UART.");
+            NRF_LOG_HEXDUMP_DEBUG(p_evt->params.rx_data.p_data, len);
+
+            rx_buf = p_evt->params.rx_data.p_data;      
+
+            parse_ble_command(rx_buf, len);
+        } break;
+
+        case BLE_NUS_EVT_TX_RDY: {
+            
+        } break;
+    }
+}
+
+
+
+uint32_t snow_ble_data_send(uint8_t* data, uint16_t len) {
+    return ble_nus_data_send(&m_nus, data, &len, m_conn_handle);
+}
+
 
 
 
@@ -93,6 +137,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
     ret_code_t err_code;
 
     switch (p_evt->evt_id) {
+    
         case PM_EVT_BONDED_PEER_CONNECTED: {
             NRF_LOG_INFO("Connected to a previously bonded device.");
         } break;
@@ -117,19 +162,6 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
             // Reject pairing request from an already bonded peer.
             pm_conn_sec_config_t conn_sec_config = {.allow_repairing = false};
             pm_conn_sec_config_reply(p_evt->conn_handle, &conn_sec_config);
-        } break;
-
-        case PM_EVT_STORAGE_FULL: {
-            // Run garbage collection on the flash.
-            err_code = fds_gc();
-            if (err_code == FDS_ERR_NO_SPACE_IN_QUEUES)
-            {
-                // Retry.
-            }
-            else
-            {
-                APP_ERROR_CHECK(err_code);
-            }
         } break;
 
         case PM_EVT_PEERS_DELETE_SUCCEEDED: {
@@ -176,14 +208,12 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
  */
 static void timers_init(void) {
     // Initialize timer module.
-    ret_code_t err_code = app_timer_init();
-    APP_ERROR_CHECK(err_code);
-
+    
 
     // Add timers
     //
-    app_timer_create(&m_gps_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_handler);
-    app_timer_create(&m_air_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_handler);
+    //app_timer_create(&m_snow_timer_id, APP_TIMER_MODE_REPEATED, timer_snow_timeout_handler);
+
 }
 
 
@@ -217,13 +247,29 @@ static void gap_params_init(void) {
 }
 
 
+/**@brief Function for handling events from the GATT library. */
+void gatt_evt_handler(nrf_ble_gatt_t * p_gatt, nrf_ble_gatt_evt_t const * p_evt)
+{
+    if ((m_conn_handle == p_evt->conn_handle) && (p_evt->evt_id == NRF_BLE_GATT_EVT_ATT_MTU_UPDATED))
+    {
+        m_ble_nus_max_data_len = p_evt->params.att_mtu_effective - OPCODE_LENGTH - HANDLE_LENGTH;
+        NRF_LOG_INFO("Data len is set to 0x%X(%d)", m_ble_nus_max_data_len, m_ble_nus_max_data_len);
+    }
+    NRF_LOG_DEBUG("ATT MTU exchange completed. central 0x%x peripheral 0x%x",
+                  p_gatt->att_mtu_desired_central,
+                  p_gatt->att_mtu_desired_periph);
+}
+
 
 
 /**@brief Function for initializing the GATT module.
  */
 static void gatt_init(void)
 {
-    ret_code_t err_code = nrf_ble_gatt_init(&m_gatt, NULL);
+    ret_code_t err_code = nrf_ble_gatt_init(&m_gatt, gatt_evt_handler);
+    APP_ERROR_CHECK(err_code);
+
+    err_code = nrf_ble_gatt_att_mtu_periph_set(&m_gatt, NRF_SDH_BLE_GATT_MAX_MTU_SIZE);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -247,6 +293,8 @@ static void services_init(void) {
     uint32_t         err_code;
     nrf_ble_qwr_init_t qwr_init = {0};
 
+    ble_nus_init_t  nus_init;
+
     // Initialize Queued Write Module.
     qwr_init.error_handler = nrf_qwr_error_handler;
 
@@ -255,10 +303,12 @@ static void services_init(void) {
 
     // Init services here
     //
-    ble_gps_service_init(&m_gps_service);
-    ble_air_service_init(&m_air_service);
-    //ble_snow_service_init(&m_snow_service);
-    //ble_accl_service_init(&m_accl_service);
+    //err_code = ble_snow_service_init(&m_snow_service);
+
+    memset(&nus_init, 0, sizeof(nus_init));
+    nus_init.data_handler = nus_data_handler;
+
+    err_code = ble_nus_init(&m_nus, &nus_init);
 }
 
 
@@ -320,17 +370,17 @@ static void conn_params_init(void) {
 /**@brief Function for starting timers.
  */
 static void application_timers_start(void) {
-    app_timer_start(m_gps_timer_id, GPS_TIMER_INTERVAL, NULL); 
-    app_timer_start(m_air_timer_id, AIR_TIMER_INTERVAL, NULL); 
+    //app_timer_start(m_snow_timer_id, SNOW_TIMER_INTERVAL, NULL); 
 }
 
 
 
+// TODO Re-implement sleep mode
 /**@brief Function for putting the chip into sleep mode.
  *
  * @note This function will not return.
  */
-static void sleep_mode_enter(void) {
+/*static void sleep_mode_enter(void) {
     ret_code_t err_code;
 
     err_code = bsp_indication_set(BSP_INDICATE_IDLE);
@@ -343,7 +393,7 @@ static void sleep_mode_enter(void) {
     // Go to system-off mode (this function will not return; wakeup will cause a reset).
     err_code = sd_power_system_off();
     APP_ERROR_CHECK(err_code);
-}
+}*/
 
 
 
@@ -364,7 +414,7 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt) {
             break;
 
         case BLE_ADV_EVT_IDLE:
-            sleep_mode_enter();
+            //sleep_mode_enter();
             break;
 
         default:
@@ -388,6 +438,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             NRF_LOG_INFO("Disconnected.");
             // LED indication will be changed when advertising starts.
  
+            snow_slave_ble_on_disconnected();
+            m_conn_handle = BLE_CONN_HANDLE_INVALID;
 
             break;
 
@@ -399,9 +451,10 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
             APP_ERROR_CHECK(err_code);
 
-            //When connected; start our timer to start regular temperature measurements
-            app_timer_start(m_our_char_timer_id, OUR_CHAR_TIMER_INTERVAL, NULL);
-            break;
+            //TODO When connected; start our timer to start regular temperature measurements
+            //app_timer_start(m_our_char_timer_id, OUR_CHAR_TIMER_INTERVAL, NULL);
+            
+            snow_slave_ble_on_connected();
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
         {
@@ -429,6 +482,10 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             err_code = sd_ble_gap_disconnect(p_ble_evt->evt.gatts_evt.conn_handle,
                                              BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
             APP_ERROR_CHECK(err_code);
+            break;
+
+        case BLE_GATTS_EVT_HVN_TX_COMPLETE:
+            snow_slave_ble_on_tx_done();
             break;
 
         default:
@@ -459,10 +516,10 @@ static void ble_stack_init(void) {
     APP_ERROR_CHECK(err_code);
 
     // Register a handler for BLE events.
-    NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
+    NRF_SDH_BLE_OBSERVER(m_ble_observer, 2, ble_evt_handler, NULL);
 
-    //OUR_JOB: Step 3.C Set up a BLE event observer to call ble_our_service_on_ble_evt() to do housekeeping of ble connections related to our service and characteristics.
-    NRF_SDH_BLE_OBSERVER(m_our_service_observer, APP_BLE_OBSERVER_PRIO, ble_our_service_on_ble_evt, (void*) &m_our_service);
+    //TODO OUR_JOB: Step 3.C Set up a BLE event observer to call ble_our_service_on_ble_evt() to do housekeeping of ble connections related to our service and characteristics.
+    //NRF_SDH_BLE_OBSERVER(m_snow_service_observer, APP_BLE_OBSERVER_PRIO, ble_snow_service_on_ble_evt, (void*) &m_snow_service);
 }
 
 
@@ -519,12 +576,12 @@ static void delete_bonds(void)
  *
  * @param[in]   event   Event generated when button is pressed.
  */
-static void bsp_event_handler(bsp_event_t event) {
+/*static void bsp_event_handler(bsp_event_t event) {
     ret_code_t err_code;
 
     switch (event) {
         case BSP_EVENT_SLEEP:
-            sleep_mode_enter();
+            //sleep_mode_enter();
             break; // BSP_EVENT_SLEEP
 
         case BSP_EVENT_DISCONNECT:
@@ -537,7 +594,7 @@ static void bsp_event_handler(bsp_event_t event) {
 
         case BSP_EVENT_WHITELIST_OFF:
             if (m_conn_handle == BLE_CONN_HANDLE_INVALID) {
-                err_code = ble_advertising_restart_without_whitelist(&m_advertising);
+                err_code = ble_advertising_restart_without_whitelist(&m_adv);
                 if (err_code != NRF_ERROR_INVALID_STATE) {
                     APP_ERROR_CHECK(err_code);
                 }
@@ -547,7 +604,7 @@ static void bsp_event_handler(bsp_event_t event) {
         default:
             break;
     }
-}    
+}    */
 
 
 
@@ -572,10 +629,10 @@ static void advertising_init(void) {
 
     init.evt_handler = on_adv_evt;
 
-    err_code = ble_advertising_init(&m_advertising, &init);
+    err_code = ble_advertising_init(&m_adv, &init);
     APP_ERROR_CHECK(err_code);
 
-    ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
+    ble_advertising_conn_cfg_tag_set(&m_adv, APP_BLE_CONN_CFG_TAG);
 }
 
 
@@ -584,6 +641,7 @@ static void advertising_init(void) {
  *
  * @param[out] p_erase_bonds  Will be true if the clear bonding button was pressed to wake the application up.
  */
+ /*
 static void buttons_leds_init(bool * p_erase_bonds) {
     ret_code_t err_code;
     bsp_event_t startup_event;
@@ -596,7 +654,7 @@ static void buttons_leds_init(bool * p_erase_bonds) {
 
     *p_erase_bonds = (startup_event == BSP_EVENT_CLEAR_BONDING_DATA);
 }
-
+*/
 
 
 /**@brief Function for initializing the nrf log module.
@@ -612,11 +670,11 @@ static void log_init(void) {
 
 /**@brief Function for initializing power management.
  */
-static void power_management_init(void) {
+/*static void power_management_init(void) {
     ret_code_t err_code;
     err_code = nrf_pwr_mgmt_init();
     APP_ERROR_CHECK(err_code);
-}
+}*/
 
 
 /**@brief Function for handling the idle state (main loop).
@@ -637,21 +695,28 @@ static void advertising_start(bool erase_bonds) {
         delete_bonds();
         // Advertising is started by PM_EVT_PEERS_DELETED_SUCEEDED event
     } else {
-        ret_code_t err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST);
+        ret_code_t err_code = ble_advertising_start(&m_adv, BLE_ADV_MODE_FAST);
 
         APP_ERROR_CHECK(err_code);
     }
 }
 
 
+ble_snow_t* ble_snow_service_get() {
+    return &m_snow_service;
+}
+
+
+
+
 uint32_t snow_ble_init() {
     bool erase_bonds;
 
      // Initialize.
-    //log_init();
+    log_init();
     timers_init();
-    buttons_leds_init(&erase_bonds);
-    power_management_init();
+    //buttons_leds_init(&erase_bonds);
+    //power_management_init();
     ble_stack_init();
     gap_params_init();
     gatt_init();
@@ -666,6 +731,7 @@ uint32_t snow_ble_init() {
     
     return NRF_SUCCESS;
 }
+
 
 
 

@@ -20,9 +20,14 @@
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 
+#include "app_timer.h"
+
+#include "ble_nus.h"
+
 
 #include "snow_slave.h"
-
+#include "ble_module.h"
+#include "ble_snow_service.h"
 
 #include <math.h>
 
@@ -32,11 +37,103 @@
 static const nrf_drv_twi_t m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
 static const nrf_drv_spi_t m_spi = NRF_DRV_SPI_INSTANCE(SPI_INSTANCE_ID);
 
+ble_snow_t* ble_snow_sh = NULL;
 
 
+#define GPS_TIMER_INTERVAL    APP_TIMER_TICKS(10000)
+#define BME_TIMER_INTERVAL    APP_TIMER_TICKS(150)
+#define ACCL_TIMER_INTERVAL   APP_TIMER_TICKS(150)
+#define CONT_TIMER_INTERVAL   APP_TIMER_TICKS(1000)
 
 
+struct snow_adxl362_device   m_adxl_dev1;
+struct snow_adxl362_device   m_adxl_dev2;
+struct snow_bme680_device    m_bme_dev;
 
+struct bme680_field_data              m_bme_data = {0};
+struct snow_gps_position_information  m_gps_pos = {0};
+struct snow_accl_xyz_raw_t            m_accl = {0};
+
+
+APP_TIMER_DEF(m_gps_timer_id);
+APP_TIMER_DEF(m_bme_timer_id);
+APP_TIMER_DEF(m_accl_timer_id);
+APP_TIMER_DEF(m_cont_timer_id);
+
+
+uint16_t m_meas_period = 0;
+volatile bool m_continuous = false;
+volatile bool m_toggle_continuous = false;
+volatile bool m_tx_ready = false;
+volatile bool m_ble_connected = false;
+
+volatile bool m_measure_bme = false;
+volatile bool m_get_position = false;
+volatile bool m_measure_accl = false;
+
+
+volatile bool m_ble_send_flag = false;
+volatile bool m_ble_tx_completed = false;
+volatile uint8_t m_ble_tx_buf[17];
+
+
+static void timer_accl_timer_timeout_handler(void* context) {
+    
+
+    //snow_adxl362_read_accl(&device2, &accl);
+    //snow_adxl362_read_temp(&device2, &temp);
+    //printf("ADXL362_2\t=> X: %.2f | Y:%.2f | Z: %.2f | T: %.2f\n", accl.x, accl.y, accl.z, temp);
+
+    m_measure_accl = true;
+}
+
+static void timer_bme_timer_timeout_handler(void* context) {
+    //snow_bme680_measure(&m_bme_dev, &m_bme_data);
+    //printf("BME680   \t=> T: %.2f degC, P: %.2f hPa, H: %.2f %%rH\n\n", m_bme_data.temperature / 100.0f,
+    //       m_bme_data.pressure / 100.0f, m_bme_data.humidity / 1000.0f);
+
+    m_measure_bme = true;
+}
+
+
+static void timer_gps_timer_timeout_handler(void* context) {
+    //snow_gps_read_data();
+    //snow_gps_get_position(&m_gps_pos);
+    //printf("Data valid: %s\nLongitude: %f°; Latitude: %f°\nTime: %02d:%02d:%02d\n\n", m_gps_pos.valid ? "yes" : "no", m_gps_pos.longitude, m_gps_pos.latitude, m_gps_pos.time.hours, m_gps_pos.time.minutes, m_gps_pos.time.seconds);
+    m_get_position = true;
+}
+
+
+static void timer_cont_timer_timeout_handler(void* context) {
+    if (m_ble_send_flag)
+        return;
+
+    //snow_ble_data_send(m_ble_tx_buf, 17);
+    m_ble_send_flag = true;
+}
+
+
+void snow_slave_ble_on_connected() {
+    m_tx_ready = true;
+    m_ble_connected = true;
+}
+
+
+void snow_slave_ble_on_disconnected() {
+    m_tx_ready = false;
+    m_ble_connected = false;
+}
+
+
+void snow_slave_ble_on_tx_done() {
+    m_tx_ready = true;
+}
+
+
+void snow_slave_toggle_continuous_measurement() {
+    m_continuous = !m_continuous;
+    m_toggle_continuous = true;
+}
 
 
 uint8_t snow_slave_init() {
@@ -59,12 +156,14 @@ uint8_t snow_slave_init() {
     printf ("[DEBUG] Snow sensor slave initialization %s\n", err_code == NRF_SUCCESS ? "successful" : "failed");
     #endif
 
+    sensors_init();
+
     return err_code;
 }
 
 uint8_t snow_slave_run() {
     #ifdef __DEBUG__
-    test_everything();
+    test_ble();
     #endif
 }
 
@@ -119,12 +218,28 @@ ret_code_t twi_init() {
 
 
 
+ret_code_t sensors_init() {
+    snow_bme680_init(&m_bme_dev, &m_twi, 20);
+    snow_bme680_configure(&m_bme_dev, &m_meas_period);
+
+    snow_adxl362_init(&m_adxl_dev1, &m_spi, nrf_spi_transfer);
+    snow_adxl362_soft_reset(&m_adxl_dev1, true);
+    snow_adxl362_configure(&m_adxl_dev1, true);
+
+    snow_adxl362_init(&m_adxl_dev2, &m_spi, nrf_spi_transfer);
+    snow_adxl362_soft_reset(&m_adxl_dev2, true);
+    snow_adxl362_configure(&m_adxl_dev2, true);
+
+    snow_gps_init(SNOW_GPS_I2C_ADDR, &m_twi);
+}
+
+
 
 
 #ifdef __DEBUG__
 
 void test_bme() {
-    twi_init();
+    //twi_init();
 
     struct bme680_dev bme;
 
@@ -214,6 +329,98 @@ void test_gps() {
 }
 
 
+
+void test_ble() {
+    ret_code_t err_code = app_timer_init();
+    err_code = snow_ble_init();  
+
+    app_timer_create(&m_accl_timer_id, APP_TIMER_MODE_REPEATED, timer_accl_timer_timeout_handler);
+    app_timer_create(&m_bme_timer_id, APP_TIMER_MODE_REPEATED, timer_bme_timer_timeout_handler);
+    app_timer_create(&m_gps_timer_id, APP_TIMER_MODE_REPEATED, timer_gps_timer_timeout_handler);
+    app_timer_create(&m_cont_timer_id, APP_TIMER_MODE_REPEATED, timer_cont_timer_timeout_handler);
+    
+    
+    snow_gps_read_data();
+
+    for (;;) {
+        if (m_toggle_continuous) {
+            if (m_continuous) {
+                app_timer_start(m_gps_timer_id, GPS_TIMER_INTERVAL, NULL);
+                app_timer_start(m_bme_timer_id, BME_TIMER_INTERVAL, NULL);
+                app_timer_start(m_accl_timer_id, ACCL_TIMER_INTERVAL, NULL);
+                app_timer_start(m_cont_timer_id, CONT_TIMER_INTERVAL, NULL);
+            } else {
+                app_timer_stop(m_gps_timer_id);
+                app_timer_stop(m_bme_timer_id);
+                app_timer_stop(m_accl_timer_id);
+                app_timer_stop(m_cont_timer_id);
+            }
+            m_toggle_continuous = false;
+        }
+
+        if (m_measure_accl) {
+            snow_adxl362_read_accl_raw(&m_adxl_dev1, &m_accl);
+            //snow_adxl362_read_temp(&m_adxl_dev1, &temp);
+            printf("ADXL362_1\t=> X: %.2f | Y:%.2f | Z: %.2f\n", m_accl.x, m_accl.y, m_accl.z);
+
+            m_measure_accl = false;
+        }
+
+        if (m_measure_bme) {
+            snow_bme680_measure(&m_bme_dev, &m_bme_data);
+            printf("BME680   \t=> T: %.2f degC, P: %.2f hPa, H: %.2f %%rH\n\n", m_bme_data.temperature / 100.0f,
+                m_bme_data.pressure / 100.0f, m_bme_data.humidity / 1000.0f);
+
+            m_measure_bme = false;
+        }
+
+        if (m_get_position) {
+            snow_gps_read_data();
+            snow_gps_get_position(&m_gps_pos);
+            printf("Data valid: %s\nLongitude: %f°; Latitude: %f°\nTime: %02d:%02d:%02d\n\n", m_gps_pos.valid ? "yes" : "no", m_gps_pos.longitude, m_gps_pos.latitude, m_gps_pos.time.hours, m_gps_pos.time.minutes, m_gps_pos.time.seconds);
+    
+            m_get_position = false;
+        }
+
+        if (m_ble_connected && m_tx_ready) {
+            if (m_ble_send_flag) {
+                do {
+                
+                    m_ble_tx_buf[0] = 'c';
+
+                    m_ble_tx_buf[1] = (uint8_t)(m_bme_data.temperature);
+                    m_ble_tx_buf[2] = (uint8_t)((m_bme_data.temperature >> 8));
+    
+                    m_ble_tx_buf[3] = (uint8_t)(m_bme_data.pressure);
+                    m_ble_tx_buf[4] = (uint8_t)((m_bme_data.pressure >> 8));
+                    m_ble_tx_buf[5] = (uint8_t)((m_bme_data.pressure >> 16));
+                    m_ble_tx_buf[6] = (uint8_t)((m_bme_data.pressure >> 24));
+
+                    m_ble_tx_buf[7] = (uint8_t)(m_bme_data.humidity);
+                    m_ble_tx_buf[8] = (uint8_t)((m_bme_data.humidity >> 8));
+                    m_ble_tx_buf[9] = (uint8_t)((m_bme_data.humidity >> 16));
+                    m_ble_tx_buf[10] = (uint8_t)((m_bme_data.humidity >> 24) );
+
+
+
+                    m_ble_tx_buf[11] = (uint8_t)(m_accl.x);
+                    m_ble_tx_buf[12] = (uint8_t)((m_accl.x >> 8));
+
+                    m_ble_tx_buf[13] = (uint8_t)(m_accl.y);
+                    m_ble_tx_buf[14] = (uint8_t)((m_accl.y >> 8));
+
+                    m_ble_tx_buf[15] = (uint8_t)(m_accl.z);
+                    m_ble_tx_buf[16] = (uint8_t)((m_accl.z >> 8));
+
+                    m_tx_ready = false;
+                    m_tx_ready = true;
+                    err_code = snow_ble_data_send(m_ble_tx_buf, 17);                
+                } while (err_code == NRF_ERROR_RESOURCES);
+                m_ble_send_flag = false;       
+            }
+        }
+    }
+}
 
 
 

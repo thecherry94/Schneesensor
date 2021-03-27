@@ -1,13 +1,12 @@
 #include "snow_gps.h"
 #include "nrf_delay.h"
 
-#include "lib/module/minmea/minmea.h"
-
+#include "minmea.h"
 
 nrf_drv_twi_t* m_twi;
 uint8_t m_read_buf[SNOW_GPS_DATA_BUFFER_SIZE+1] = {0};
 
-snow_gps_position_information m_last_position;
+snow_gps_position_information m_current_position;
 
 ubx_packet m_last_cfg_packet = {
     .valid = SNOW_GPS_UBX_PCKG_INVALID
@@ -283,12 +282,12 @@ uint8_t snow_gps_process_nmea_line(uint8_t* line, uint8_t size) {
         case MINMEA_SENTENCE_RMC: {
             struct minmea_sentence_rmc frame;
             if (minmea_parse_rmc(&frame, line)) {
-                m_last_position.latitude = minmea_tocoord(&frame.latitude);
-                m_last_position.longitude = minmea_tocoord(&frame.longitude);
-                m_last_position.speed = minmea_tocoord(&frame.speed);
-                m_last_position.date = frame.date;
-                m_last_position.time = frame.time;
-                m_last_position.valid = frame.valid;
+                m_current_position.latitude = minmea_tocoord(&frame.latitude);
+                m_current_position.longitude = minmea_tocoord(&frame.longitude);
+                m_current_position.speed = minmea_tocoord(&frame.speed);
+                m_current_position.date = frame.date;
+                m_current_position.time = frame.time;
+                m_current_position.valid = frame.valid;
             }
         } break;       
         case MINMEA_SENTENCE_GGA: {
@@ -335,7 +334,7 @@ uint8_t snow_gps_process_nmea_line(uint8_t* line, uint8_t size) {
 
 
 void snow_gps_get_position(snow_gps_position_information* pos) {
-    *pos = m_last_position;
+    *pos = m_current_position;
 }
 
 

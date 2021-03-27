@@ -11,9 +11,10 @@ TODO:
 #include "ble_advertising.h"
 #include "ble_conn_params.h"
 
-#include "lib/sensor/snow_adxl362/snow_adxl362.h"
-#include "lib/sensor/snow_bme680/snow_bme680.h"
-#include "lib/sensor/snow_gps/snow_gps.h"
+#include "ble_module.h"
+#include "snow_adxl362.h"
+#include "snow_bme680.h"
+#include "snow_gps.h"
 
 
 #ifndef SNOW_SLAVE_H
@@ -54,9 +55,10 @@ TODO:
 
 // Struct for holding measurement values
 typedef struct snow_slave_measurement_t {
+    uint8_t measurements;
     struct snow_accl_xyz_t acceleration;
     struct bme680_field_data bme_data;
-    struct snow_gps_position_information gps_info; 
+    struct snow_gps_position_information gps_data;// Add field for GPS data
     // Add field for snow moisture
 } snow_slave_measurement_t;
 
@@ -84,6 +86,9 @@ uint8_t snow_slave_check_components(uint8_t components);
 uint8_t snow_slave_reset_components(uint8_t components);
 
 
+void snow_slave_toggle_continuous_measurement();
+
+
 
 
 // General init functions
@@ -95,6 +100,8 @@ ret_code_t twi_init();
 // Init SPI
 ret_code_t spi_init();
 
+ret_code_t sensors_init();
+
 
 // Test functions
 //
@@ -102,6 +109,7 @@ ret_code_t spi_init();
 void test_bme();
 void test_adxl362();
 void test_gps();
+void test_ble();
 void test_everything();
 #endif 
 
@@ -114,6 +122,10 @@ snow_adxl362_ret_code_t nrf_spi_transfer(uint8_t* tx_buf, uint8_t tx_len, uint8_
 // 
 // Bluetooth functions
 //
+
+void snow_slave_ble_on_connected();
+void snow_slave_ble_on_disconnected();
+void snow_slave_ble_on_tx_done();
 
 
 

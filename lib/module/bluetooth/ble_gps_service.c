@@ -6,7 +6,7 @@
 #define GPS_CHAR_DATE_DATA_LEN    3
 
 
-void ble_gps_service_on_ble_evt(ble_evt_t* const * ble_evt, void* context) {
+void ble_gps_service_on_ble_evt(ble_evt_t const * ble_evt, void* context) {
     ble_gps_t* sh = (ble_gps_t*)context;
 
     switch (ble_evt->header.evt_id) {
@@ -34,7 +34,6 @@ static uint32_t add_position_characteristic(ble_gps_t* sh) {
     err_code = sd_ble_uuid_vs_add(&base_uuid, &char_uuid.type);
 
 
-
     // Specifiy characteristic general metadata for read/write access
     //
     ble_gatts_char_md_t char_md;
@@ -46,32 +45,38 @@ static uint32_t add_position_characteristic(ble_gps_t* sh) {
     // Specifiy characteristic CCCD metadata for read/write access
     //
     ble_gatts_attr_md_t cccd_md;
-    memset(&cccd_md, 0, sizeof(cccd_md));
-    cccd_md.char_props.notify = 1;   
+    memset(&cccd_md, 0, sizeof(cccd_md));  
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
     cccd_md.vloc = BLE_GATTS_VLOC_STACK;
     char_md.p_cccd_md = &cccd_md;
+    char_md.char_props.notify = 1; 
 
 
-    BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
-    BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
+    ble_gatts_attr_md_t attr_md;
+    memset(&attr_md, 0, sizeof(attr_md));  
+    attr_md.vloc = BLE_GATTS_VLOC_STACK;
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&attr_md.write_perm);
+
 
     // Specifiy the value options of the characteristic
     //
     ble_gatts_attr_t attr_char_val;
     memset(&attr_char_val, 0, sizeof(attr_char_val));
     attr_char_val.p_uuid = &char_uuid;
-    attr_char_val.p_attr_md = &char_md;
-    attr_char_val.max_len = GPS_CHAR_POS_DATA_LEN                 // longitude and latitude are bundled together (2x4 bytes)
+    attr_char_val.p_attr_md = &attr_md;
+    attr_char_val.max_len = GPS_CHAR_POS_DATA_LEN;                 // longitude and latitude are bundled together (2x4 bytes)
     attr_char_val.init_len = GPS_CHAR_POS_DATA_LEN;
-    uint8_t[GPS_CHAR_POS_DATA_LEN] data = {0};
+    uint8_t data[GPS_CHAR_POS_DATA_LEN] = {0};
     attr_char_val.p_value = data;
 
 
     // Add the characteristic to the service
     //
-    err_code = sd_ble_gatts_characteristic_add(sh, &char_md, &attr_char_val, &sh->chs_position);
+    err_code = sd_ble_gatts_characteristic_add(sh->service_handle, &char_md, &attr_char_val, &sh->chs_position);
 
-    return NRF_SUCCESS;
+    return err_code;
 }
 
 
@@ -102,31 +107,36 @@ static uint32_t add_time_characteristic(ble_gps_t* sh) {
     //
     ble_gatts_attr_md_t cccd_md;
     memset(&cccd_md, 0, sizeof(cccd_md));
-    cccd_md.char_props.notify = 1;   
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
     cccd_md.vloc = BLE_GATTS_VLOC_STACK;
     char_md.p_cccd_md = &cccd_md;
+    char_md.char_props.notify = 1; 
 
+    ble_gatts_attr_md_t attr_md;
+    memset(&attr_md, 0, sizeof(attr_md));  
+    attr_md.vloc = BLE_GATTS_VLOC_STACK;
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&attr_md.write_perm);
 
-    BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
-    BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
-
+    
     // Specifiy the value options of the characteristic
     //
     ble_gatts_attr_t attr_char_val;
     memset(&attr_char_val, 0, sizeof(attr_char_val));
     attr_char_val.p_uuid = &char_uuid;
-    attr_char_val.p_attr_md = &char_md;
+    attr_char_val.p_attr_md = &attr_md;
     attr_char_val.max_len = GPS_CHAR_TIME_DATA_LEN;                            // hours, minutes, seconds (3 bytes)
     attr_char_val.init_len = GPS_CHAR_TIME_DATA_LEN;
-    uint8_t[GPS_CHAR_TIME_DATA_LEN] data = {0};
+    uint8_t data[GPS_CHAR_TIME_DATA_LEN]  = {0};
     attr_char_val.p_value = data;
 
 
     // Add the characteristic to the service
     //
-    err_code = sd_ble_gatts_characteristic_add(sh, &char_md, &attr_char_val, &sh->chs_position);
+    err_code = sd_ble_gatts_characteristic_add(sh->service_handle, &char_md, &attr_char_val, &sh->chs_time);
 
-    return NRF_SUCCESS;
+    return err_code;
 }
 
 
@@ -156,32 +166,38 @@ static uint32_t add_date_characteristic(ble_gps_t* sh) {
     // Specifiy characteristic CCCD metadata for read/write access
     //
     ble_gatts_attr_md_t cccd_md;
-    memset(&cccd_md, 0, sizeof(cccd_md));
-    cccd_md.char_props.notify = 1;   
+    memset(&cccd_md, 0, sizeof(cccd_md)); 
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
     cccd_md.vloc = BLE_GATTS_VLOC_STACK;
     char_md.p_cccd_md = &cccd_md;
+    char_md.char_props.notify = 1; 
 
+    ble_gatts_attr_md_t attr_md;
+    memset(&attr_md, 0, sizeof(attr_md));  
+    attr_md.vloc = BLE_GATTS_VLOC_STACK;
 
-    BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
-    BLE_GAP_COON_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&attr_md.write_perm);
+ 
 
     // Specifiy the value options of the characteristic
     //
     ble_gatts_attr_t attr_char_val;
     memset(&attr_char_val, 0, sizeof(attr_char_val));
     attr_char_val.p_uuid = &char_uuid;
-    attr_char_val.p_attr_md = &char_md;
+    attr_char_val.p_attr_md = &attr_md;
     attr_char_val.max_len = GPS_CHAR_DATE_DATA_LEN;                             // year, month, day (3 bytes)
     attr_char_val.init_len = GPS_CHAR_DATE_DATA_LEN;
-    uint8_t[GPS_CHAR_DATE_DATA_LEN] data = {0};
+    uint8_t data[GPS_CHAR_DATE_DATA_LEN] = {0};
     attr_char_val.p_value = data;
 
 
     // Add the characteristic to the service
     //
-    err_code = sd_ble_gatts_characteristic_add(sh, &char_md, &attr_char_val, &sh->chs_position);
+    err_code = sd_ble_gatts_characteristic_add(sh->service_handle, &char_md, &attr_char_val, &sh->chs_date);
 
-    return NRF_SUCCESS;
+    return err_code;
 }
 
 
@@ -192,7 +208,7 @@ uint32_t ble_gps_service_init(ble_gps_t* sh) {
 
     // Set UUID for service
     ble_uuid_t service_uuid;
-    ble_uuid128_t base_uid = BLE_UUID_GPS_BASE_UUID;
+    ble_uuid128_t base_uuid = BLE_UUID_GPS_BASE_UUID;
     service_uuid.uuid = BLE_UUID_GPS_SERVICE;
 
     // Add service UUID
@@ -214,12 +230,13 @@ uint32_t ble_gps_service_init(ble_gps_t* sh) {
 
 
 void ble_gps_service_position_update(ble_gps_t* sh, snow_gps_position_information* gps_info) {
+    uint32_t err_code;
     if (sh->conn_handle != BLE_CONN_HANDLE_INVALID) {
-        uint16_t len = GPS_CHAR_POS_DATA_LEN;
+        const uint16_t len = GPS_CHAR_POS_DATA_LEN;
         ble_gatts_hvx_params_t hvx_params;
         memset(&hvx_params, 0, sizeof(hvx_params));
 
-        uint8_t data[len] = {0};
+        uint8_t data[GPS_CHAR_POS_DATA_LEN] = {0};
 
         // Prepare data
         // TODO Leon's protip -> uint8_t* benutzen und pointer hochzählen
@@ -245,18 +262,18 @@ void ble_gps_service_position_update(ble_gps_t* sh, snow_gps_position_informatio
         hvx_params.p_len = &len;
         hvx_params.p_data = data;
 
-        sd_ble_gatts_hvx(sh->conn_handle, &hvx_params);
+        err_code = sd_ble_gatts_hvx(sh->conn_handle, &hvx_params);
     }
 }
 
 
 void ble_gps_service_time_update(ble_gps_t* sh, snow_gps_position_information* gps_info) {
     if (sh->conn_handle != BLE_CONN_HANDLE_INVALID) {
-        uint16_t len = GPS_CHAR_TIME_DATA_LEN;
+        const uint16_t len = GPS_CHAR_TIME_DATA_LEN;
         ble_gatts_hvx_params_t hvx_params;
         memset(&hvx_params, 0, sizeof(hvx_params));
 
-        uint8_t data[len] = {0};
+        uint8_t data[GPS_CHAR_TIME_DATA_LEN] = {0};
 
         // prepare data
         data[0] = (uint8_t)gps_info->time.hours;
@@ -276,11 +293,11 @@ void ble_gps_service_time_update(ble_gps_t* sh, snow_gps_position_information* g
 
 void ble_gps_service_date_update(ble_gps_t* sh, snow_gps_position_information* gps_info) {
     if (sh->conn_handle != BLE_CONN_HANDLE_INVALID) {
-        uint16_t len = GPS_CHAR_DATE_DATA_LEN;
+        const uint16_t len = GPS_CHAR_DATE_DATA_LEN;
         ble_gatts_hvx_params_t hvx_params;
         memset(&hvx_params, 0, sizeof(hvx_params));
 
-        uint8_t data[len] = {0};
+        uint8_t data[GPS_CHAR_DATE_DATA_LEN] = {0};
 
         // prepare data
         data[0] = (uint8_t)gps_info->date.year;

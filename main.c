@@ -27,12 +27,9 @@
 #include <math.h>
 
 #include "snow_slave.h"
-#include "snow_bme680.h"
-#include "snow_adxl362.h"
 
 
-//========= MAIN ====================
-void main(void) { // renamed to mainThread() on CCxxyy
+void main(void) { 
     snow_slave_init();
     snow_slave_run();
 }
