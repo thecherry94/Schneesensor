@@ -43,19 +43,8 @@ BLE_ADVERTISING_DEF(m_adv);
 
 BLE_NUS_DEF(m_nus, NRF_SDH_BLE_TOTAL_LINK_COUNT);
 
-ble_callback_t cb_on_ble_connected;
-ble_callback_t cb_on_ble_disconnected;
-
-
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;
 static uint16_t m_ble_nus_max_data_len = BLE_GATT_ATT_MTU_DEFAULT - 3;
-
-
-ble_snow_t m_snow_service;
-
-APP_TIMER_DEF(m_snow_timer_id);
-#define SNOW_TIMER_INTERVAL    APP_TIMER_TICKS(1000)
-
 
 
 static void timer_snow_timeout_handler(void* context) {
@@ -72,9 +61,69 @@ static void advertising_start(bool erase_bonds);
 
 
 
-static void parse_ble_command(uint8_t* cmd, uint16_t len) {
-    if (cmd[0] == 'c') {
-        snow_slave_toggle_continuous_measurement();
+static void parse_ble_command(uint8_t* cmd, uint8_t len) {
+    switch (*cmd) {
+        case 'c': {
+            if (len > 4) {
+                // Unexpected command length
+            }
+
+            uint16_t interval = (*(cmd+1) << 8) | *(cmd+2);
+            bool timestamp = *(cmd+3) == 1;
+
+            snow_slave_toggle_continuous_measurement();
+        } break;
+
+        case 'm': {
+
+        } break;
+
+        case 'r': {
+            NVIC_SystemReset();
+        } break;
+
+        case 's': {
+
+        } break;
+
+        default: {
+
+        } break;
+    }
+}
+
+
+
+// 
+// command structure 
+// first byte indicates command type
+// following bytes contain command parameters
+// A command is terminated by a ;
+// Sending multiple commands in one message is (will be) supported
+//
+// [] = obligatory parameter
+// {} = optional parameter
+//
+// commands:
+// c => toggle a continuous measurement
+// parameters: [measurement interval; 2 bytes][include timestamp; 1 byte]
+//
+// m => measure once
+// r => reset device
+// s => retrieve status of all modules
+//
+// Notifications: 
+// (sent by the device on its own)
+// e => error
+// parameters: [command type; 1 byte][error type; 1 byte] 
+//
+static void parse_ble_query(uint8_t* cmd, uint16_t len) {
+    uint16_t start = 0;
+    for (uint8_t i = 0; i < len; i++) {
+        if (cmd[i] == ';') {                       
+            parse_ble_command(cmd + start, i - start - 1);
+            start = i + 1;
+        }
     }
 }
 
@@ -97,7 +146,7 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
 
             rx_buf = p_evt->params.rx_data.p_data;      
 
-            parse_ble_command(rx_buf, len);
+            parse_ble_query(rx_buf, len);
         } break;
 
         case BLE_NUS_EVT_TX_RDY: {

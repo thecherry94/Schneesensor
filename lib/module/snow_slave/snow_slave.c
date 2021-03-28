@@ -62,6 +62,8 @@ APP_TIMER_DEF(m_cont_timer_id);
 
 
 uint16_t m_meas_period = 0;
+
+
 volatile bool m_continuous = false;
 volatile bool m_toggle_continuous = false;
 volatile bool m_tx_ready = false;
@@ -75,6 +77,8 @@ volatile bool m_measure_accl = false;
 volatile bool m_ble_send_flag = false;
 volatile bool m_ble_tx_completed = false;
 volatile uint8_t m_ble_tx_buf[17];
+
+volatile uint8_t m_new_measurements = 0; // 1 = accl, 2 = bme, 4 = gps, 8 = moisture
 
 
 static void timer_accl_timer_timeout_handler(void* context) {
@@ -105,10 +109,6 @@ static void timer_gps_timer_timeout_handler(void* context) {
 
 
 static void timer_cont_timer_timeout_handler(void* context) {
-    if (m_ble_send_flag)
-        return;
-
-    //snow_ble_data_send(m_ble_tx_buf, 17);
     m_ble_send_flag = true;
 }
 
@@ -364,6 +364,7 @@ void test_ble() {
             printf("ADXL362_1\t=> X: %.2f | Y:%.2f | Z: %.2f\n", m_accl.x, m_accl.y, m_accl.z);
 
             m_measure_accl = false;
+            m_new_measurements |= 1;
         }
 
         if (m_measure_bme) {
@@ -372,6 +373,7 @@ void test_ble() {
                 m_bme_data.pressure / 100.0f, m_bme_data.humidity / 1000.0f);
 
             m_measure_bme = false;
+            m_new_measurements |= 2;
         }
 
         if (m_get_position) {
@@ -380,6 +382,7 @@ void test_ble() {
             printf("Data valid: %s\nLongitude: %f°; Latitude: %f°\nTime: %02d:%02d:%02d\n\n", m_gps_pos.valid ? "yes" : "no", m_gps_pos.longitude, m_gps_pos.latitude, m_gps_pos.time.hours, m_gps_pos.time.minutes, m_gps_pos.time.seconds);
     
             m_get_position = false;
+            m_new_measurements |= 4;
         }
 
         if (m_ble_connected && m_tx_ready) {
