@@ -55,6 +55,11 @@ struct snow_gps_position_information  m_gps_pos = {0};
 struct snow_accl_xyz_raw_t            m_accl = {0};
 
 
+
+struct bme680_field_data*             m_bme_data_buf;
+struct snow_accl_xyz_t*               m_accl_buf;
+
+
 APP_TIMER_DEF(m_gps_timer_id);
 APP_TIMER_DEF(m_bme_timer_id);
 APP_TIMER_DEF(m_accl_timer_id);
@@ -69,6 +74,10 @@ volatile bool m_toggle_continuous = false;
 volatile bool m_tx_ready = false;
 volatile bool m_ble_connected = false;
 
+volatile bool m_single_measurement = false;
+volatile bool m_single_measurement_start = false;
+volatile bool m_toggle_single_measurement = false;
+
 volatile bool m_measure_bme = false;
 volatile bool m_get_position = false;
 volatile bool m_measure_accl = false;
@@ -76,9 +85,13 @@ volatile bool m_measure_accl = false;
 
 volatile bool m_ble_send_flag = false;
 volatile bool m_ble_tx_completed = false;
-volatile uint8_t m_ble_tx_buf[17];
+volatile uint8_t m_ble_tx_buf[64];
 
 volatile uint8_t m_new_measurements = 0; // 1 = accl, 2 = bme, 4 = gps, 8 = moisture
+
+uint16_t m_single_meas_interval = 200;
+uint8_t m_single_meas_amount = 10;
+uint8_t m_single_meas_done = 0;
 
 
 static void timer_accl_timer_timeout_handler(void* context) {
@@ -113,6 +126,56 @@ static void timer_cont_timer_timeout_handler(void* context) {
 }
 
 
+static void timer_single_measurement_timer_timeout_handler(void* context) {
+    
+}
+
+void snow_slave_single_measurement(uint16_t meas_interval, uint8_t meas_amount) {
+    if (m_continuous) {
+        const uint8_t err_msg[] = "Action blocked. Continuous measurement already running.";
+        snow_slave_ble_send_error('m', SNOW_BLE_ERROR_ACTION_BLOCKED, err_msg, strlen(err_msg));
+        return;
+    }
+
+
+    if (m_single_measurement) {
+        const uint8_t err_msg[] = "Action blocked. Measurement already started.";
+        snow_slave_ble_send_error('m', SNOW_BLE_ERROR_ACTION_BLOCKED, err_msg, strlen(err_msg));
+        return;
+    }
+    
+    m_single_measurement = true;
+    m_toggle_single_measurement = true;
+
+    m_single_meas_interval = meas_interval;
+    m_single_meas_amount = meas_amount;
+
+    m_bme_data_buf = (struct bme680_field_data*)malloc(m_single_meas_amount);
+    m_accl_buf = (struct snow_accl_xyz_t*)malloc(m_single_meas_amount);
+}
+
+void snow_slave_ble_send_device_info() {
+    uint8_t buf[3];
+    buf[0] = 'i';
+    buf[1] = SNOW_SLAVE_VERSION;
+    buf[2] = SNOW_SLAVE_REVISION;
+
+    snow_ble_data_send(buf, 3);
+}
+
+void snow_slave_ble_send_error(uint8_t cmd, uint8_t err_code, uint8_t* err_desc, uint8_t err_desc_len) {
+    uint8_t* buf = (uint8_t*)malloc(2 + err_desc_len);
+
+    buf[0] = cmd;
+    buf[1] = err_code;
+
+    if (err_desc != NULL && err_desc_len != 0)
+        memcpy(buf+2, err_desc, err_desc_len);
+
+    snow_ble_data_send(buf, 2 + err_desc_len);
+}
+
+
 void snow_slave_ble_on_connected() {
     m_tx_ready = true;
     m_ble_connected = true;
@@ -131,6 +194,9 @@ void snow_slave_ble_on_tx_done() {
 
 
 void snow_slave_toggle_continuous_measurement() {
+    if (m_single_measurement)
+        return;
+
     m_continuous = !m_continuous;
     m_toggle_continuous = true;
 }
@@ -356,6 +422,9 @@ void test_ble() {
                 app_timer_stop(m_cont_timer_id);
             }
             m_toggle_continuous = false;
+        } else if (m_toggle_single_measurement) {
+            app_timer_start(m_accl_timer_id, m_single_meas_interval, NULL);
+            m_toggle_single_measurement = false;
         }
 
         if (m_measure_accl) {
@@ -386,7 +455,7 @@ void test_ble() {
         }
 
         if (m_ble_connected && m_tx_ready) {
-            if (m_ble_send_flag) {
+            if (m_ble_send_flag && m_continuous) {
                 do {
                 
                     m_ble_tx_buf[0] = 'c';
@@ -420,6 +489,35 @@ void test_ble() {
                     err_code = snow_ble_data_send(m_ble_tx_buf, 17);                
                 } while (err_code == NRF_ERROR_RESOURCES);
                 m_ble_send_flag = false;       
+            } else if (m_single_measurement) {
+                if (!m_single_measurement_start) {
+                    if (m_new_measurements & 1 == 1) {
+                        snow_adxl362_raw_to_accl(&m_adxl_dev1, &m_accl, &m_accl_buf[m_single_meas_done++]);
+                        m_new_measurements &= ~1;
+
+                        if (m_single_meas_done == m_single_meas_amount) {
+                            snow_accl_xyz_t avg;
+                            for (int i = 0; i < m_single_meas_amount; i++) {
+                                avg.x += m_accl_buf[i].x;
+                                avg.y += m_accl_buf[i].y;
+                                avg.z += m_accl_buf[i].z;
+                            }
+
+                            avg.x /= m_single_meas_done;
+                            avg.y /= m_single_meas_done;
+                            avg.z /= m_single_meas_done;
+
+                            m_single_meas_done = 0;
+                            float abs_accl = snow_adxl362_get_absolute_acceleration(&avg); 
+                            if (abs_accl >= 0.9f || abs_accl <= 1.1f) {
+                                m_single_measurement_start = true;
+                                printf("SINGLE MEASUREMENT");
+                            }
+                        }
+                    }
+                } else {
+                    
+                }
             }
         }
     }

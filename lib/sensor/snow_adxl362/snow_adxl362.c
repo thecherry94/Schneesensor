@@ -396,6 +396,20 @@ snow_adxl362_ret_code_t nrf_spi_transfer(uint8_t* tx_buf, uint8_t tx_len, uint8_
 }
 
 
+
+void snow_adxl362_raw_to_accl(snow_adxl362_device* adxl_device, snow_accl_xyz_raw_t* raw, snow_accl_xyz_t* accl) {
+    accl->x = *((int16_t*)&raw->x) * adxl_device->scale_factor;
+    accl->y = *((int16_t*)&raw->y) * adxl_device->scale_factor;
+    accl->z = *((int16_t*)&raw->z) * adxl_device->scale_factor;
+}
+
+
+float snow_adxl362_get_absolute_acceleration(snow_accl_xyz_t* accl) {
+    return sqrt(accl->x * accl->x + accl->y * accl->y + accl->z * accl->z); 
+}
+
+
+
 /*struct snow_adxl362_device snow_adxl362_create_device(snow_adxl362_config_t* cfg) {
 
 }

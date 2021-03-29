@@ -47,6 +47,9 @@ static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;
 static uint16_t m_ble_nus_max_data_len = BLE_GATT_ATT_MTU_DEFAULT - 3;
 
 
+
+
+
 static void timer_snow_timeout_handler(void* context) {
 }
 
@@ -62,20 +65,28 @@ static void advertising_start(bool erase_bonds);
 
 
 static void parse_ble_command(uint8_t* cmd, uint8_t len) {
-    switch (*cmd) {
+    switch (cmd[0]) {
         case 'c': {
             if (len > 4) {
-                // Unexpected command length
+                snow_slave_ble_send_error(cmd[0], SNOW_BLE_ERROR_UNEXPECTED_COMMAND_LENGTH, NULL, 0);
+                return;
             }
 
-            uint16_t interval = (*(cmd+1) << 8) | *(cmd+2);
-            bool timestamp = *(cmd+3) == 1;
+            uint16_t interval = (cmd[1] << 8) | cmd[2];
+            bool timestamp = cmd[3] == 1;
 
             snow_slave_toggle_continuous_measurement();
         } break;
 
         case 'm': {
+            uint16_t interval = (cmd[1] << 8) | cmd[2];
+            uint8_t amount = cmd[3];
+            snow_slave_single_measurement(interval, amount);
+            printf("%d | %d\n", interval, amount);
+        } break;
 
+        case 'd': {
+            
         } break;
 
         case 'r': {
@@ -86,8 +97,13 @@ static void parse_ble_command(uint8_t* cmd, uint8_t len) {
 
         } break;
 
-        default: {
+        case 'i': {
+            snow_slave_ble_send_device_info();
+        } break;
 
+        default: {
+            // Unknown command ID
+            snow_slave_ble_send_error(cmd[0], SNOW_BLE_ERROR_UNKNOWN_COMMAND, NULL, 0);
         } break;
     }
 }
@@ -111,11 +127,13 @@ static void parse_ble_command(uint8_t* cmd, uint8_t len) {
 // m => measure once
 // r => reset device
 // s => retrieve status of all modules
+// i => retrieve device information such as version number etc.
+// d => send the entire dataset of measurements
 //
 // Notifications: 
 // (sent by the device on its own)
 // e => error
-// parameters: [command type; 1 byte][error type; 1 byte] 
+// parameters: [command type; 1 byte][error type; 1 byte]{error description; x bytes} 
 //
 static void parse_ble_query(uint8_t* cmd, uint16_t len) {
     uint16_t start = 0;
@@ -158,7 +176,13 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
 
 
 uint32_t snow_ble_data_send(uint8_t* data, uint16_t len) {
-    return ble_nus_data_send(&m_nus, data, &len, m_conn_handle);
+    uint32_t err_code;
+
+    do {
+        err_code = ble_nus_data_send(&m_nus, data, &len, m_conn_handle);
+    } while (err_code == NRF_ERROR_RESOURCES);
+
+    return err_code;
 }
 
 
@@ -749,12 +773,6 @@ static void advertising_start(bool erase_bonds) {
         APP_ERROR_CHECK(err_code);
     }
 }
-
-
-ble_snow_t* ble_snow_service_get() {
-    return &m_snow_service;
-}
-
 
 
 

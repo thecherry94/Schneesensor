@@ -48,6 +48,12 @@
 #define DEAD_BEEF                         0xDEADBEEF                              // Value used as error code on stack dump, can be used to identify stack location on stack unwind
 
 
+
+#define SNOW_BLE_ERROR_UNEXPECTED_COMMAND_LENGTH          0x01
+#define SNOW_BLE_ERROR_UNKNOWN_COMMAND                    0x02
+#define SNOW_BLE_ERROR_ACTION_BLOCKED                     0x03
+
+
 typedef void (*ble_callback_t)(void);
 
 
