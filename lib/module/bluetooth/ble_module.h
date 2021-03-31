@@ -54,6 +54,8 @@
 #define SNOW_BLE_ERROR_ACTION_BLOCKED                     0x03
 
 
+#define SNOW_BLE_NUS_RX_MAX_LEN                           128
+
 typedef void (*ble_callback_t)(void);
 
 

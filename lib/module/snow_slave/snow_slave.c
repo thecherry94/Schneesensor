@@ -71,6 +71,9 @@ volatile bool m_ble_connected = false;
 volatile bool m_measure_bme = false;
 volatile bool m_get_position = false;
 volatile bool m_measure_accl = false;
+volatile bool m_measure_hardness = false;
+volatile bool m_measure_moisture = false;
+volatile bool m_measure_temperature = false;
 
 
 volatile bool m_ble_send_flag = false;
@@ -336,10 +339,15 @@ void test_ble() {
     app_timer_create(&m_gps_timer_id, APP_TIMER_MODE_REPEATED, timer_gps_timer_timeout_handler);
     app_timer_create(&m_cont_timer_id, APP_TIMER_MODE_REPEATED, timer_cont_timer_timeout_handler);
     
-    
     snow_gps_read_data();
 
+    // Main program loop
     for (;;) {
+
+        // Taking measurements of the sensors is done independently from the main state machine
+        //
+
+        // Measure acceleration
         if (m_measure_accl) {
             snow_adxl362_read_accl_raw(&m_adxl_dev1, &m_accl);
 
@@ -352,6 +360,7 @@ void test_ble() {
             m_new_measurements |= 1;
         }
 
+        // Measure BME device. air (pressure, temperature, humidity)
         if (m_measure_bme) {
             snow_bme680_measure(&m_bme_dev, &m_bme_data);
             printf("BME680   \t=> T: %.2f degC, P: %.2f hPa, H: %.2f %%rH\n\n", m_bme_data.temperature / 100.0f,
@@ -361,6 +370,7 @@ void test_ble() {
             m_new_measurements |= 2;
         }
 
+        // Get current gps position
         if (m_get_position) {
             snow_gps_read_data();
             snow_gps_get_position(&m_gps_pos);
@@ -370,7 +380,31 @@ void test_ble() {
             m_new_measurements |= 4;
         }
 
+        // Measure the snow temperature
+        if (m_measure_temperature) {
+            // Not implemented yet
 
+            m_measure_temperature = false;
+        }
+
+        // Measure snow hardness
+        if (m_measure_hardness) {
+            // Not implemented yet
+
+            m_measure_hardness = false;
+        }
+        
+        // Measure snow moisture
+        if (m_measure_moisture) {
+            // Not implemented yet
+
+            m_measure_moisture = false;
+        }
+
+
+        //
+        // Main program state machine
+        //
         switch (m_main_state) {
             case SNOW_SLAVE_MAIN_IDLE: {
 
