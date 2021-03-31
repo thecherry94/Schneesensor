@@ -56,10 +56,6 @@ struct snow_accl_xyz_raw_t            m_accl = {0};
 
 
 
-struct bme680_field_data*             m_bme_data_buf;
-struct snow_accl_xyz_t*               m_accl_buf;
-
-
 APP_TIMER_DEF(m_gps_timer_id);
 APP_TIMER_DEF(m_bme_timer_id);
 APP_TIMER_DEF(m_accl_timer_id);
@@ -149,9 +145,6 @@ void snow_slave_single_measurement(uint16_t meas_interval, uint8_t meas_amount) 
 
     m_single_meas_interval = meas_interval;
     m_single_meas_amount = meas_amount;
-
-    m_bme_data_buf = (struct bme680_field_data*)malloc(m_single_meas_amount);
-    m_accl_buf = (struct snow_accl_xyz_t*)malloc(m_single_meas_amount);
 
     app_timer_start(m_accl_timer_id, m_single_meas_interval, NULL);
 }
@@ -381,33 +374,52 @@ void test_ble() {
 
             } break;
 
-
+            // Single measurement procedure
+            //
             case SNOW_SLAVE_MAIN_SINGLE: {
+                // Sub states for single measurement procedure
                 switch (m_singlemeas_state) {
+                    // First measure the acceleration over a peroid of time and calculate the average.
+                    // If the acceleration is within a set margin the device didn't move and we have found our measurement location
+                    // TODO save gps coordinate
+                    //
                     case SNOW_SLAVE_SINGLEMEAS_ACCL:  {
                         if (m_new_measurements & 1) {
-                            snow_adxl362_raw_to_accl(&m_adxl_dev1, &m_accl, &m_accl_buf[m_single_meas_done++]);
+                            struct snow_accl_xyz_t accl_buf;      // Struct to hold the acceleration value in g
+                            static struct snow_accl_xyz_t avg;    // Struct to hold the average acceleration value in g
+                            snow_adxl362_raw_to_accl(&m_adxl_dev1, &m_accl, &accl_buf);
                             m_new_measurements &= ~1;
 
+                            avg.x += accl_buf.x; 
+                            avg.y += accl_buf.y; 
+                            avg.z += accl_buf.z; 
+
+                            m_single_meas_done++;
+                          
                             if (m_single_meas_done == m_single_meas_amount) {
-                                snow_accl_xyz_t avg = {0};
-                                for (int i = 0; i < m_single_meas_amount; i++) {
-                                    avg.x += m_accl_buf[i].x;
-                                    avg.y += m_accl_buf[i].y;
-                                    avg.z += m_accl_buf[i].z;
-                                }
+                                // Maxmimum amount of measurement samples reached
+                                // Calculate average here
+                                //
 
                                 avg.x /= (float)m_single_meas_done;
                                 avg.y /= (float)m_single_meas_done;
                                 avg.z /= (float)m_single_meas_done;
 
                                 m_single_meas_done = 0;
-                                float abs_accl = snow_adxl362_get_absolute_acceleration(&avg); 
+                                float abs_accl = snow_adxl362_get_absolute_acceleration(&avg);                               
                                 if (abs_accl >= 0.8f && abs_accl <= 1.2f) {
+                                    // Acceleration within margin i.e. device didn't move
+                                    // Switch to measurement state now
+                                    // TODO save GPS coordinate
                                     m_singlemeas_state = SNOW_SLAVE_SINGLEMEAS_MEAS;
                                     app_timer_stop(m_accl_timer_id);
                                     app_timer_start(m_bme_timer_id, m_meas_period, NULL);
                                 }
+                                
+                                // Reset static struct for averaging
+                                avg.x = 0;
+                                avg.y = 0;
+                                avg.z = 0;
                             }
                         }
                     } break; 
