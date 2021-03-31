@@ -119,7 +119,9 @@ static void timer_gps_timer_timeout_handler(void* context) {
 
 
 static void timer_cont_timer_timeout_handler(void* context) {
-    m_contmeas_state = SNOW_SLAVE_CONTMEAS_BUFFER;
+    
+    if (m_contmeas_state != SNOW_SLAVE_CONTMEAS_SEND)
+        m_contmeas_state = SNOW_SLAVE_CONTMEAS_BUFFER;
 }
 
 
@@ -203,7 +205,7 @@ void snow_slave_toggle_continuous_measurement() {
         return;
     }
 
-    m_main_state == SNOW_SLAVE_MAIN_CONTINUOUS ? SNOW_SLAVE_MAIN_IDLE : SNOW_SLAVE_MAIN_CONTINUOUS;
+    m_main_state = m_main_state == SNOW_SLAVE_MAIN_CONTINUOUS ? SNOW_SLAVE_MAIN_IDLE : SNOW_SLAVE_MAIN_CONTINUOUS;
 
     if (m_main_state == SNOW_SLAVE_MAIN_CONTINUOUS) {
         app_timer_start(m_gps_timer_id, GPS_TIMER_INTERVAL, NULL);
@@ -430,10 +432,13 @@ void test_ble() {
                 }
             } break;
 
-
+            // Continuous measurement procedure
+            //
             case SNOW_SLAVE_MAIN_CONTINUOUS: {
-                switch (m_contmeas_state) {     
+                switch (m_contmeas_state) {  
                     case SNOW_SLAVE_CONTMEAS_BUFFER: {
+                        // Buffer current measurements
+                        //
                         memset(m_ble_tx_buf, 0, SNOW_SLAVE_BLE_BUFFER_SIZE);
 
                         m_ble_tx_buf[0] = 'c';
@@ -466,11 +471,13 @@ void test_ble() {
                     } break;
 
                     case SNOW_SLAVE_CONTMEAS_SEND: {
+                        // Send the data to device
                         if (ble_send_ready()) {                                                      
                             err_code = snow_ble_data_send(m_ble_tx_buf, 17);                                             
                         }
 
                         if (err_code == NRF_SUCCESS)
+                            // Go idle until next buffer state is set
                             m_contmeas_state = SNOW_SLAVE_CONTMEAS_IDLE;
                     } break;
                 }
