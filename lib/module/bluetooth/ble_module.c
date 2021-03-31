@@ -177,6 +177,8 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
 uint32_t snow_ble_data_send(uint8_t* data, uint16_t len) {
     uint32_t err_code;
 
+    snow_slave_ble_on_tx_start();
+
     do {
         err_code = ble_nus_data_send(&m_nus, data, &len, m_conn_handle);
     } while (err_code == NRF_ERROR_RESOURCES);

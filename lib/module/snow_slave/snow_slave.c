@@ -68,15 +68,9 @@ APP_TIMER_DEF(m_cont_timer_id);
 
 uint16_t m_meas_period = 0;
 
-
-volatile bool m_continuous = false;
-volatile bool m_toggle_continuous = false;
 volatile bool m_tx_ready = false;
 volatile bool m_ble_connected = false;
 
-volatile bool m_single_measurement = false;
-volatile bool m_single_measurement_start = false;
-volatile bool m_toggle_single_measurement = false;
 
 volatile bool m_measure_bme = false;
 volatile bool m_get_position = false;
@@ -84,8 +78,7 @@ volatile bool m_measure_accl = false;
 
 
 volatile bool m_ble_send_flag = false;
-volatile bool m_ble_tx_completed = false;
-volatile uint8_t m_ble_tx_buf[64];
+volatile uint8_t m_ble_tx_buf[SNOW_SLAVE_BLE_BUFFER_SIZE];
 
 volatile uint8_t m_new_measurements = 0; // 1 = accl, 2 = bme, 4 = gps, 8 = moisture
 
@@ -94,9 +87,13 @@ uint8_t m_single_meas_amount = 10;
 uint8_t m_single_meas_done = 0;
 
 
-snow_slave_main_state_t m_main_state = SNOW_SLAVE_MAIN_IDLE;
-snow_slave_singlemeas_state_t m_singlemeas_state = SNOW_SLAVE_SINGLEMEAS_IDLE;
+volatile enum snow_slave_main_state_t m_main_state = SNOW_SLAVE_MAIN_IDLE;
+volatile enum snow_slave_singlemeas_state_t m_singlemeas_state = SNOW_SLAVE_SINGLEMEAS_IDLE;
+volatile enum snow_slave_contmeas_state_t m_contmeas_state = SNOW_SLAVE_CONTMEAS_IDLE;
 
+static bool ble_send_ready() {
+    return m_tx_ready && m_ble_connected;
+}
 
 static void timer_accl_timer_timeout_handler(void* context) {
     
@@ -126,7 +123,7 @@ static void timer_gps_timer_timeout_handler(void* context) {
 
 
 static void timer_cont_timer_timeout_handler(void* context) {
-    m_ble_send_flag = true;
+    m_contmeas_state = SNOW_SLAVE_CONTMEAS_BUFFER;
 }
 
 
@@ -135,21 +132,20 @@ static void timer_single_measurement_timer_timeout_handler(void* context) {
 }
 
 void snow_slave_single_measurement(uint16_t meas_interval, uint8_t meas_amount) {
-    if (m_continuous) {
+    if (m_main_state == SNOW_SLAVE_MAIN_CONTINUOUS) {
         const uint8_t err_msg[] = "Action blocked. Continuous measurement already running.";
         snow_slave_ble_send_error('m', SNOW_BLE_ERROR_ACTION_BLOCKED, err_msg, strlen(err_msg));
         return;
     }
 
-
-    if (m_single_measurement) {
+    if (m_main_state == SNOW_SLAVE_MAIN_SINGLE) {
         const uint8_t err_msg[] = "Action blocked. Measurement already started.";
         snow_slave_ble_send_error('m', SNOW_BLE_ERROR_ACTION_BLOCKED, err_msg, strlen(err_msg));
         return;
     }
     
-    m_single_measurement = true;
-    m_toggle_single_measurement = true;
+    m_main_state = SNOW_SLAVE_MAIN_SINGLE;
+    m_singlemeas_state = SNOW_SLAVE_SINGLEMEAS_ACCL;
 
     m_single_meas_interval = meas_interval;
     m_single_meas_amount = meas_amount;
@@ -182,31 +178,41 @@ void snow_slave_ble_send_error(uint8_t cmd, uint8_t err_code, uint8_t* err_desc,
 }
 
 
+// Exectued whenever a device connects
 void snow_slave_ble_on_connected() {
     m_tx_ready = true;
     m_ble_connected = true;
 }
 
 
+// Executed whenever a device disconnects 
 void snow_slave_ble_on_disconnected() {
     m_tx_ready = false;
     m_ble_connected = false;
 }
 
 
+// Executed whenever a transmission is finished
 void snow_slave_ble_on_tx_done() {
     m_tx_ready = true;
 }
 
+// Executed whenever a transmission is about to start
+void snow_slave_ble_on_tx_start() {
+    m_tx_ready = false;
+}
+
 
 void snow_slave_toggle_continuous_measurement() {
-    if (m_single_measurement)
+    if (m_main_state == SNOW_SLAVE_MAIN_SINGLE) {
+        const uint8_t err_msg[] = "Action blocked. Measurement already started.";
+        snow_slave_ble_send_error('c', SNOW_BLE_ERROR_ACTION_BLOCKED, err_msg, strlen(err_msg));
         return;
+    }
 
-    m_continuous = !m_continuous;
-    m_toggle_continuous = true;
+    m_main_state == SNOW_SLAVE_MAIN_CONTINUOUS ? SNOW_SLAVE_MAIN_IDLE : SNOW_SLAVE_MAIN_CONTINUOUS;
 
-    if (m_continuous) {
+    if (m_main_state == SNOW_SLAVE_MAIN_CONTINUOUS) {
         app_timer_start(m_gps_timer_id, GPS_TIMER_INTERVAL, NULL);
         app_timer_start(m_bme_timer_id, BME_TIMER_INTERVAL, NULL);
         app_timer_start(m_accl_timer_id, ACCL_TIMER_INTERVAL, NULL);
@@ -325,6 +331,213 @@ ret_code_t sensors_init() {
 
 #ifdef __DEBUG__
 
+
+void test_ble() {
+    ret_code_t err_code = app_timer_init();
+    err_code = snow_ble_init();  
+
+    app_timer_create(&m_accl_timer_id, APP_TIMER_MODE_REPEATED, timer_accl_timer_timeout_handler);
+    app_timer_create(&m_bme_timer_id, APP_TIMER_MODE_REPEATED, timer_bme_timer_timeout_handler);
+    app_timer_create(&m_gps_timer_id, APP_TIMER_MODE_REPEATED, timer_gps_timer_timeout_handler);
+    app_timer_create(&m_cont_timer_id, APP_TIMER_MODE_REPEATED, timer_cont_timer_timeout_handler);
+    
+    
+    snow_gps_read_data();
+
+    for (;;) {
+        if (m_measure_accl) {
+            snow_adxl362_read_accl_raw(&m_adxl_dev1, &m_accl);
+
+            snow_accl_xyz_t accl;
+            snow_adxl362_raw_to_accl(&m_adxl_dev1, &m_accl, &accl);
+            //snow_adxl362_read_temp(&m_adxl_dev1, &temp);
+            printf("ADXL362_1\t=> X: %.2f | Y:%.2f | Z: %.2f\n", accl.x, accl.y, accl.z);
+
+            m_measure_accl = false;
+            m_new_measurements |= 1;
+        }
+
+        if (m_measure_bme) {
+            snow_bme680_measure(&m_bme_dev, &m_bme_data);
+            printf("BME680   \t=> T: %.2f degC, P: %.2f hPa, H: %.2f %%rH\n\n", m_bme_data.temperature / 100.0f,
+                m_bme_data.pressure / 100.0f, m_bme_data.humidity / 1000.0f);
+
+            m_measure_bme = false;
+            m_new_measurements |= 2;
+        }
+
+        if (m_get_position) {
+            snow_gps_read_data();
+            snow_gps_get_position(&m_gps_pos);
+            printf("Data valid: %s\nLongitude: %f°; Latitude: %f°\nTime: %02d:%02d:%02d\n\n", m_gps_pos.valid ? "yes" : "no", m_gps_pos.longitude, m_gps_pos.latitude, m_gps_pos.time.hours, m_gps_pos.time.minutes, m_gps_pos.time.seconds);
+    
+            m_get_position = false;
+            m_new_measurements |= 4;
+        }
+
+
+        switch (m_main_state) {
+            case SNOW_SLAVE_MAIN_IDLE: {
+
+            } break;
+
+
+            case SNOW_SLAVE_MAIN_SINGLE: {
+                switch (m_singlemeas_state) {
+                    case SNOW_SLAVE_SINGLEMEAS_ACCL:  {
+                        if (m_new_measurements & 1) {
+                            snow_adxl362_raw_to_accl(&m_adxl_dev1, &m_accl, &m_accl_buf[m_single_meas_done++]);
+                            m_new_measurements &= ~1;
+
+                            if (m_single_meas_done == m_single_meas_amount) {
+                                snow_accl_xyz_t avg = {0};
+                                for (int i = 0; i < m_single_meas_amount; i++) {
+                                    avg.x += m_accl_buf[i].x;
+                                    avg.y += m_accl_buf[i].y;
+                                    avg.z += m_accl_buf[i].z;
+                                }
+
+                                avg.x /= (float)m_single_meas_done;
+                                avg.y /= (float)m_single_meas_done;
+                                avg.z /= (float)m_single_meas_done;
+
+                                m_single_meas_done = 0;
+                                float abs_accl = snow_adxl362_get_absolute_acceleration(&avg); 
+                                if (abs_accl >= 0.8f && abs_accl <= 1.2f) {
+                                    m_singlemeas_state = SNOW_SLAVE_SINGLEMEAS_MEAS;
+                                    app_timer_stop(m_accl_timer_id);
+                                    app_timer_start(m_bme_timer_id, m_meas_period, NULL);
+                                }
+                            }
+                        }
+                    } break; 
+                
+                    case SNOW_SLAVE_SINGLEMEAS_MEAS:  {
+                        
+                    } break;
+                }
+            } break;
+
+
+            case SNOW_SLAVE_MAIN_CONTINUOUS: {
+                switch (m_contmeas_state) {     
+                    case SNOW_SLAVE_CONTMEAS_BUFFER: {
+                        memset(m_ble_tx_buf, 0, SNOW_SLAVE_BLE_BUFFER_SIZE);
+
+                        m_ble_tx_buf[0] = 'c';
+
+                        m_ble_tx_buf[1] = (uint8_t)(m_bme_data.temperature);
+                        m_ble_tx_buf[2] = (uint8_t)((m_bme_data.temperature >> 8));
+
+                        m_ble_tx_buf[3] = (uint8_t)(m_bme_data.pressure);
+                        m_ble_tx_buf[4] = (uint8_t)((m_bme_data.pressure >> 8));
+                        m_ble_tx_buf[5] = (uint8_t)((m_bme_data.pressure >> 16));
+                        m_ble_tx_buf[6] = (uint8_t)((m_bme_data.pressure >> 24));
+
+                        m_ble_tx_buf[7] = (uint8_t)(m_bme_data.humidity);
+                        m_ble_tx_buf[8] = (uint8_t)((m_bme_data.humidity >> 8));
+                        m_ble_tx_buf[9] = (uint8_t)((m_bme_data.humidity >> 16));
+                        m_ble_tx_buf[10] = (uint8_t)((m_bme_data.humidity >> 24) );
+
+
+
+                        m_ble_tx_buf[11] = (uint8_t)(m_accl.x);
+                        m_ble_tx_buf[12] = (uint8_t)((m_accl.x >> 8));
+
+                        m_ble_tx_buf[13] = (uint8_t)(m_accl.y);
+                        m_ble_tx_buf[14] = (uint8_t)((m_accl.y >> 8));
+
+                        m_ble_tx_buf[15] = (uint8_t)(m_accl.z);
+                        m_ble_tx_buf[16] = (uint8_t)((m_accl.z >> 8));
+
+                        m_contmeas_state = SNOW_SLAVE_CONTMEAS_SEND;
+                    } break;
+
+                    case SNOW_SLAVE_CONTMEAS_SEND: {
+                        if (ble_send_ready()) {                                                      
+                            err_code = snow_ble_data_send(m_ble_tx_buf, 17);                                             
+                        }
+
+                        if (err_code == NRF_SUCCESS)
+                            m_contmeas_state = SNOW_SLAVE_CONTMEAS_IDLE;
+                    } break;
+                }
+            } break;
+        }
+    }
+}
+
+
+
+void test_everything() {
+
+
+    //spi_init();
+    //twi_init();
+
+    // Init both ADXL362
+    //
+    snow_adxl362_device device = snow_adxl362_create_device(23, NULL);
+
+    snow_adxl362_init(&device, &m_spi, nrf_spi_transfer);
+    snow_adxl362_soft_reset(&device, true);
+    if (snow_adxl362_configure(&device, true) == SNOW_ADXL362_CONFIGURATION_ERROR) {
+        printf("ADXL362 config error (cs_pin=%d)\n", device.cs_pin);
+    }
+
+    snow_adxl362_device device2 = snow_adxl362_create_device(38, NULL);
+
+    snow_adxl362_init(&device2, &m_spi, &nrf_spi_transfer);
+    snow_adxl362_soft_reset(&device2, true);
+    if (snow_adxl362_configure(&device2, true) == SNOW_ADXL362_CONFIGURATION_ERROR) {
+        printf("ADXL362 config error (cs_pin=%d)\n", device2.cs_pin);
+    }
+
+    // Init BME680
+    struct bme680_dev bme;
+
+    uint16_t meas_period = 0;
+
+    snow_bme680_init(&bme, &m_twi, 10);
+    snow_bme680_configure(&bme, &meas_period);
+
+    struct bme680_field_data data;
+    snow_accl_xyz_t accl = {0};
+    float temp = 0;
+
+    // Init GPS
+    snow_gps_init(SNOW_GPS_I2C_ADDR, &m_twi);
+    snow_gps_position_information gps_pos;
+
+
+    for (;;) {
+        snow_adxl362_read_accl(&device, &accl);
+        snow_adxl362_read_temp(&device, &temp);
+        printf("ADXL362_1\t=> X: %.2f | Y:%.2f | Z: %.2f | T: %.2f\n", accl.x, accl.y, accl.z, temp);
+
+        snow_adxl362_read_accl(&device2, &accl);
+        snow_adxl362_read_temp(&device2, &temp);
+        printf("ADXL362_2\t=> X: %.2f | Y:%.2f | Z: %.2f | T: %.2f\n", accl.x, accl.y, accl.z, temp);
+        
+        snow_adxl362_self_test_t test = 0;
+        //snow_adxl362_perform_self_test(&device, &test, 16);
+
+        snow_bme680_measure(&bme, &data);
+        snow_gps_read_data();
+        snow_gps_get_position(&gps_pos);
+        
+        printf("BME680   \t=> T: %.2f degC, P: %.2f hPa, H: %.2f %%rH\n\n", data.temperature / 100.0f,
+            data.pressure / 100.0f, data.humidity / 1000.0f);
+        
+              
+    
+        printf("GPS\nData valid: %s\nLongitude: %f°; Latitude: %f°\nTime: %02d:%02d:%02d\n\n", gps_pos.valid ? "yes" : "no", gps_pos.longitude, gps_pos.latitude, gps_pos.time.hours, gps_pos.time.minutes, gps_pos.time.seconds);
+
+        nrf_delay_ms(1000);
+    }
+}
+
+
 void test_bme() {
     //twi_init();
 
@@ -415,193 +628,6 @@ void test_gps() {
     }
 }
 
-
-
-void test_ble() {
-    ret_code_t err_code = app_timer_init();
-    err_code = snow_ble_init();  
-
-    app_timer_create(&m_accl_timer_id, APP_TIMER_MODE_REPEATED, timer_accl_timer_timeout_handler);
-    app_timer_create(&m_bme_timer_id, APP_TIMER_MODE_REPEATED, timer_bme_timer_timeout_handler);
-    app_timer_create(&m_gps_timer_id, APP_TIMER_MODE_REPEATED, timer_gps_timer_timeout_handler);
-    app_timer_create(&m_cont_timer_id, APP_TIMER_MODE_REPEATED, timer_cont_timer_timeout_handler);
-    
-    
-    snow_gps_read_data();
-
-    for (;;) {
-         (m_toggle_single_measurement) {
-            app_timer_start(m_accl_timer_id, m_single_meas_interval, NULL);
-            m_toggle_single_measurement = false;
-        }
-
-        if (m_measure_accl) {
-            snow_adxl362_read_accl_raw(&m_adxl_dev1, &m_accl);
-
-            snow_accl_xyz_t accl;
-            snow_adxl362_raw_to_accl(&m_adxl_dev1, &m_accl, &accl);
-            //snow_adxl362_read_temp(&m_adxl_dev1, &temp);
-            printf("ADXL362_1\t=> X: %.2f | Y:%.2f | Z: %.2f\n", accl.x, accl.y, accl.z);
-
-            m_measure_accl = false;
-            m_new_measurements |= 1;
-        }
-
-        if (m_measure_bme) {
-            snow_bme680_measure(&m_bme_dev, &m_bme_data);
-            printf("BME680   \t=> T: %.2f degC, P: %.2f hPa, H: %.2f %%rH\n\n", m_bme_data.temperature / 100.0f,
-                m_bme_data.pressure / 100.0f, m_bme_data.humidity / 1000.0f);
-
-            m_measure_bme = false;
-            m_new_measurements |= 2;
-        }
-
-        if (m_get_position) {
-            snow_gps_read_data();
-            snow_gps_get_position(&m_gps_pos);
-            printf("Data valid: %s\nLongitude: %f°; Latitude: %f°\nTime: %02d:%02d:%02d\n\n", m_gps_pos.valid ? "yes" : "no", m_gps_pos.longitude, m_gps_pos.latitude, m_gps_pos.time.hours, m_gps_pos.time.minutes, m_gps_pos.time.seconds);
-    
-            m_get_position = false;
-            m_new_measurements |= 4;
-        }
-
-        if (m_ble_connected && m_tx_ready) {
-            if (m_ble_send_flag && m_continuous) {
-                do {
-                
-                    m_ble_tx_buf[0] = 'c';
-
-                    m_ble_tx_buf[1] = (uint8_t)(m_bme_data.temperature);
-                    m_ble_tx_buf[2] = (uint8_t)((m_bme_data.temperature >> 8));
-    
-                    m_ble_tx_buf[3] = (uint8_t)(m_bme_data.pressure);
-                    m_ble_tx_buf[4] = (uint8_t)((m_bme_data.pressure >> 8));
-                    m_ble_tx_buf[5] = (uint8_t)((m_bme_data.pressure >> 16));
-                    m_ble_tx_buf[6] = (uint8_t)((m_bme_data.pressure >> 24));
-
-                    m_ble_tx_buf[7] = (uint8_t)(m_bme_data.humidity);
-                    m_ble_tx_buf[8] = (uint8_t)((m_bme_data.humidity >> 8));
-                    m_ble_tx_buf[9] = (uint8_t)((m_bme_data.humidity >> 16));
-                    m_ble_tx_buf[10] = (uint8_t)((m_bme_data.humidity >> 24) );
-
-
-
-                    m_ble_tx_buf[11] = (uint8_t)(m_accl.x);
-                    m_ble_tx_buf[12] = (uint8_t)((m_accl.x >> 8));
-
-                    m_ble_tx_buf[13] = (uint8_t)(m_accl.y);
-                    m_ble_tx_buf[14] = (uint8_t)((m_accl.y >> 8));
-
-                    m_ble_tx_buf[15] = (uint8_t)(m_accl.z);
-                    m_ble_tx_buf[16] = (uint8_t)((m_accl.z >> 8));
-
-                    m_tx_ready = false;
-                    m_tx_ready = true;
-                    err_code = snow_ble_data_send(m_ble_tx_buf, 17);                
-                } while (err_code == NRF_ERROR_RESOURCES);
-                m_ble_send_flag = false;       
-            } else if (m_single_measurement) {
-                if (!m_single_measurement_start) {
-                    if (m_new_measurements & 1) {
-                        snow_adxl362_raw_to_accl(&m_adxl_dev1, &m_accl, &m_accl_buf[m_single_meas_done++]);
-                        m_new_measurements &= ~1;
-
-                        if (m_single_meas_done == m_single_meas_amount) {
-                            snow_accl_xyz_t avg = {0};
-                            for (int i = 0; i < m_single_meas_amount; i++) {
-                                avg.x += m_accl_buf[i].x;
-                                avg.y += m_accl_buf[i].y;
-                                avg.z += m_accl_buf[i].z;
-                            }
-
-                            avg.x /= (float)m_single_meas_done;
-                            avg.y /= (float)m_single_meas_done;
-                            avg.z /= (float)m_single_meas_done;
-
-                            m_single_meas_done = 0;
-                            float abs_accl = snow_adxl362_get_absolute_acceleration(&avg); 
-                            if (abs_accl >= 0.5f && abs_accl <= 1.5f) {
-                                m_single_measurement_start = true;
-                            }
-                        }
-                    }
-                } else {
-                    
-                }
-            }
-        }
-    }
-}
-
-
-
-void test_everything() {
-
-
-    //spi_init();
-    //twi_init();
-
-    // Init both ADXL362
-    //
-    snow_adxl362_device device = snow_adxl362_create_device(23, NULL);
-
-    snow_adxl362_init(&device, &m_spi, nrf_spi_transfer);
-    snow_adxl362_soft_reset(&device, true);
-    if (snow_adxl362_configure(&device, true) == SNOW_ADXL362_CONFIGURATION_ERROR) {
-        printf("ADXL362 config error (cs_pin=%d)\n", device.cs_pin);
-    }
-
-    snow_adxl362_device device2 = snow_adxl362_create_device(38, NULL);
-
-    snow_adxl362_init(&device2, &m_spi, &nrf_spi_transfer);
-    snow_adxl362_soft_reset(&device2, true);
-    if (snow_adxl362_configure(&device2, true) == SNOW_ADXL362_CONFIGURATION_ERROR) {
-        printf("ADXL362 config error (cs_pin=%d)\n", device2.cs_pin);
-    }
-
-    // Init BME680
-    struct bme680_dev bme;
-
-    uint16_t meas_period = 0;
-
-    snow_bme680_init(&bme, &m_twi, 10);
-    snow_bme680_configure(&bme, &meas_period);
-
-    struct bme680_field_data data;
-    snow_accl_xyz_t accl = {0};
-    float temp = 0;
-
-    // Init GPS
-    snow_gps_init(SNOW_GPS_I2C_ADDR, &m_twi);
-    snow_gps_position_information gps_pos;
-
-
-    for (;;) {
-        snow_adxl362_read_accl(&device, &accl);
-        snow_adxl362_read_temp(&device, &temp);
-        printf("ADXL362_1\t=> X: %.2f | Y:%.2f | Z: %.2f | T: %.2f\n", accl.x, accl.y, accl.z, temp);
-
-        snow_adxl362_read_accl(&device2, &accl);
-        snow_adxl362_read_temp(&device2, &temp);
-        printf("ADXL362_2\t=> X: %.2f | Y:%.2f | Z: %.2f | T: %.2f\n", accl.x, accl.y, accl.z, temp);
-        
-        snow_adxl362_self_test_t test = 0;
-        //snow_adxl362_perform_self_test(&device, &test, 16);
-
-        snow_bme680_measure(&bme, &data);
-        snow_gps_read_data();
-        snow_gps_get_position(&gps_pos);
-        
-        printf("BME680   \t=> T: %.2f degC, P: %.2f hPa, H: %.2f %%rH\n\n", data.temperature / 100.0f,
-            data.pressure / 100.0f, data.humidity / 1000.0f);
-        
-              
-    
-        printf("GPS\nData valid: %s\nLongitude: %f°; Latitude: %f°\nTime: %02d:%02d:%02d\n\n", gps_pos.valid ? "yes" : "no", gps_pos.longitude, gps_pos.latitude, gps_pos.time.hours, gps_pos.time.minutes, gps_pos.time.seconds);
-
-        nrf_delay_ms(1000);
-    }
-}
 
 #endif
 

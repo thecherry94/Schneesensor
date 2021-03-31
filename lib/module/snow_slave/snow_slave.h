@@ -51,6 +51,10 @@ TODO:
 #define SNOW_SLAVE_REVISION               0x01
 
 
+
+#define SNOW_SLAVE_BLE_BUFFER_SIZE        128
+
+
 // Structs
 //
 
@@ -77,11 +81,18 @@ typedef enum snow_slave_main_state_t {
 
 // Enum for single measurement flow control
 typedef enum snow_slave_singlemeas_state_t {
-    SNOW_SLAVE_SINGLEMEAS_IDLE
+    SNOW_SLAVE_SINGLEMEAS_IDLE,
     SNOW_SLAVE_SINGLEMEAS_ACCL,
     SNOW_SLAVE_SINGLEMEAS_MEAS,
     SNOW_SLAVE_SINGLE_MEAS_DONE
 } snow_slave_singlemeas_state_t;
+
+// Enum for continuous measurement flow control
+typedef enum snow_slave_contmeas_state_t {
+    SNOW_SLAVE_CONTMEAS_IDLE,
+    SNOW_SLAVE_CONTMEAS_BUFFER,
+    SNOW_SLAVE_CONTMEAS_SEND
+} snow_slave_contmeas_state_t;
 
 
 //
@@ -151,6 +162,7 @@ snow_adxl362_ret_code_t nrf_spi_transfer(uint8_t* tx_buf, uint8_t tx_len, uint8_
 void snow_slave_ble_on_connected();
 void snow_slave_ble_on_disconnected();
 void snow_slave_ble_on_tx_done();
+void snow_slave_ble_on_tx_start();
 
 
 
