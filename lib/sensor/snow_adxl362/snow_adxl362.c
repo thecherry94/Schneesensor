@@ -2,6 +2,7 @@
 #include "nrf_drv_spi.h"
 #include "nrf_gpio.h"
 #include <stdio.h>
+#include <math.h>
 
 
 nrf_drv_spi_t*                m_spi = NULL;
@@ -405,7 +406,7 @@ void snow_adxl362_raw_to_accl(snow_adxl362_device* adxl_device, snow_accl_xyz_ra
 
 
 float snow_adxl362_get_absolute_acceleration(snow_accl_xyz_t* accl) {
-    return sqrt(accl->x * accl->x + accl->y * accl->y + accl->z * accl->z); 
+    return sqrtf(accl->x * accl->x + accl->y * accl->y + accl->z * accl->z);
 }
 
 

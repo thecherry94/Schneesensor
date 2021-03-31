@@ -64,6 +64,26 @@ typedef struct snow_slave_measurement_t {
 } snow_slave_measurement_t;
 
 
+// Enums
+//
+
+// Enum for main program flow control
+typedef enum snow_slave_main_state_t {
+    SNOW_SLAVE_MAIN_IDLE,
+    SNOW_SLAVE_MAIN_CONTINUOUS,
+    SNOW_SLAVE_MAIN_SINGLE
+} snow_slave_state_t;
+
+
+// Enum for single measurement flow control
+typedef enum snow_slave_singlemeas_state_t {
+    SNOW_SLAVE_SINGLEMEAS_IDLE
+    SNOW_SLAVE_SINGLEMEAS_ACCL,
+    SNOW_SLAVE_SINGLEMEAS_MEAS,
+    SNOW_SLAVE_SINGLE_MEAS_DONE
+} snow_slave_singlemeas_state_t;
+
+
 //
 // Functions
 //

@@ -82,7 +82,6 @@ static void parse_ble_command(uint8_t* cmd, uint8_t len) {
             uint16_t interval = (cmd[1] << 8) | cmd[2];
             uint8_t amount = cmd[3];
             snow_slave_single_measurement(interval, amount);
-            printf("%d | %d\n", interval, amount);
         } break;
 
         case 'd': {

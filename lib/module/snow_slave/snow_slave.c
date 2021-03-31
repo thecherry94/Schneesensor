@@ -94,6 +94,10 @@ uint8_t m_single_meas_amount = 10;
 uint8_t m_single_meas_done = 0;
 
 
+snow_slave_main_state_t m_main_state = SNOW_SLAVE_MAIN_IDLE;
+snow_slave_singlemeas_state_t m_singlemeas_state = SNOW_SLAVE_SINGLEMEAS_IDLE;
+
+
 static void timer_accl_timer_timeout_handler(void* context) {
     
 
@@ -152,6 +156,8 @@ void snow_slave_single_measurement(uint16_t meas_interval, uint8_t meas_amount) 
 
     m_bme_data_buf = (struct bme680_field_data*)malloc(m_single_meas_amount);
     m_accl_buf = (struct snow_accl_xyz_t*)malloc(m_single_meas_amount);
+
+    app_timer_start(m_accl_timer_id, m_single_meas_interval, NULL);
 }
 
 void snow_slave_ble_send_device_info() {
@@ -199,6 +205,18 @@ void snow_slave_toggle_continuous_measurement() {
 
     m_continuous = !m_continuous;
     m_toggle_continuous = true;
+
+    if (m_continuous) {
+        app_timer_start(m_gps_timer_id, GPS_TIMER_INTERVAL, NULL);
+        app_timer_start(m_bme_timer_id, BME_TIMER_INTERVAL, NULL);
+        app_timer_start(m_accl_timer_id, ACCL_TIMER_INTERVAL, NULL);
+        app_timer_start(m_cont_timer_id, CONT_TIMER_INTERVAL, NULL);
+    } else {
+        app_timer_stop(m_gps_timer_id);
+        app_timer_stop(m_bme_timer_id);
+        app_timer_stop(m_accl_timer_id);
+        app_timer_stop(m_cont_timer_id);
+    }
 }
 
 
@@ -230,6 +248,7 @@ uint8_t snow_slave_init() {
 uint8_t snow_slave_run() {
     #ifdef __DEBUG__
     test_ble();
+    //test_adxl362();
     #endif
 }
 
@@ -288,13 +307,15 @@ ret_code_t sensors_init() {
     snow_bme680_init(&m_bme_dev, &m_twi, 20);
     snow_bme680_configure(&m_bme_dev, &m_meas_period);
 
+    //m_adxl_dev1 = snow_adxl362_create_device(38, NULL);
+    //snow_adxl362_init(&m_adxl_dev1, &m_spi, nrf_spi_transfer);
+    //snow_adxl362_soft_reset(&m_adxl_dev1, true);
+    //snow_adxl362_configure(&m_adxl_dev1, true);
+
+    m_adxl_dev1 = snow_adxl362_create_device(23, NULL);
     snow_adxl362_init(&m_adxl_dev1, &m_spi, nrf_spi_transfer);
     snow_adxl362_soft_reset(&m_adxl_dev1, true);
     snow_adxl362_configure(&m_adxl_dev1, true);
-
-    snow_adxl362_init(&m_adxl_dev2, &m_spi, nrf_spi_transfer);
-    snow_adxl362_soft_reset(&m_adxl_dev2, true);
-    snow_adxl362_configure(&m_adxl_dev2, true);
 
     snow_gps_init(SNOW_GPS_I2C_ADDR, &m_twi);
 }
@@ -409,28 +430,18 @@ void test_ble() {
     snow_gps_read_data();
 
     for (;;) {
-        if (m_toggle_continuous) {
-            if (m_continuous) {
-                app_timer_start(m_gps_timer_id, GPS_TIMER_INTERVAL, NULL);
-                app_timer_start(m_bme_timer_id, BME_TIMER_INTERVAL, NULL);
-                app_timer_start(m_accl_timer_id, ACCL_TIMER_INTERVAL, NULL);
-                app_timer_start(m_cont_timer_id, CONT_TIMER_INTERVAL, NULL);
-            } else {
-                app_timer_stop(m_gps_timer_id);
-                app_timer_stop(m_bme_timer_id);
-                app_timer_stop(m_accl_timer_id);
-                app_timer_stop(m_cont_timer_id);
-            }
-            m_toggle_continuous = false;
-        } else if (m_toggle_single_measurement) {
+         (m_toggle_single_measurement) {
             app_timer_start(m_accl_timer_id, m_single_meas_interval, NULL);
             m_toggle_single_measurement = false;
         }
 
         if (m_measure_accl) {
             snow_adxl362_read_accl_raw(&m_adxl_dev1, &m_accl);
+
+            snow_accl_xyz_t accl;
+            snow_adxl362_raw_to_accl(&m_adxl_dev1, &m_accl, &accl);
             //snow_adxl362_read_temp(&m_adxl_dev1, &temp);
-            printf("ADXL362_1\t=> X: %.2f | Y:%.2f | Z: %.2f\n", m_accl.x, m_accl.y, m_accl.z);
+            printf("ADXL362_1\t=> X: %.2f | Y:%.2f | Z: %.2f\n", accl.x, accl.y, accl.z);
 
             m_measure_accl = false;
             m_new_measurements |= 1;
@@ -491,27 +502,26 @@ void test_ble() {
                 m_ble_send_flag = false;       
             } else if (m_single_measurement) {
                 if (!m_single_measurement_start) {
-                    if (m_new_measurements & 1 == 1) {
+                    if (m_new_measurements & 1) {
                         snow_adxl362_raw_to_accl(&m_adxl_dev1, &m_accl, &m_accl_buf[m_single_meas_done++]);
                         m_new_measurements &= ~1;
 
                         if (m_single_meas_done == m_single_meas_amount) {
-                            snow_accl_xyz_t avg;
+                            snow_accl_xyz_t avg = {0};
                             for (int i = 0; i < m_single_meas_amount; i++) {
                                 avg.x += m_accl_buf[i].x;
                                 avg.y += m_accl_buf[i].y;
                                 avg.z += m_accl_buf[i].z;
                             }
 
-                            avg.x /= m_single_meas_done;
-                            avg.y /= m_single_meas_done;
-                            avg.z /= m_single_meas_done;
+                            avg.x /= (float)m_single_meas_done;
+                            avg.y /= (float)m_single_meas_done;
+                            avg.z /= (float)m_single_meas_done;
 
                             m_single_meas_done = 0;
                             float abs_accl = snow_adxl362_get_absolute_acceleration(&avg); 
-                            if (abs_accl >= 0.9f || abs_accl <= 1.1f) {
+                            if (abs_accl >= 0.5f && abs_accl <= 1.5f) {
                                 m_single_measurement_start = true;
-                                printf("SINGLE MEASUREMENT");
                             }
                         }
                     }
