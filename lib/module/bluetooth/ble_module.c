@@ -46,7 +46,8 @@ BLE_NUS_DEF(m_nus, NRF_SDH_BLE_TOTAL_LINK_COUNT);
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;
 static uint16_t m_ble_nus_max_data_len = BLE_GATT_ATT_MTU_DEFAULT - 3;
 
-
+static uint8_t m_nus_data_rx_buf[SNOW_BLE_NUS_RX_MAX_LEN] = {0};
+static uint16_t m_nus_rx_cnt = 0;
 
 
 
@@ -67,7 +68,7 @@ static void advertising_start(bool erase_bonds);
 static void parse_ble_command(uint8_t* cmd, uint8_t len) {
     switch (cmd[0]) {
         case 'c': {
-            if (len > 4) {
+            if (len != 4) {
                 snow_slave_ble_send_error(cmd[0], SNOW_BLE_ERROR_UNEXPECTED_COMMAND_LENGTH, NULL, 0);
                 return;
             }
@@ -146,8 +147,7 @@ static void parse_ble_query(uint8_t* cmd, uint16_t len) {
 
 
 
-uint8_t* m_nus_data_rx_buf[SNOW_BLE_NUS_RX_MAX_LEN];
-uint16_t m_nus_rx_cnt = 0;
+
 
 static void nus_data_handler(ble_nus_evt_t * p_evt)
 {   
@@ -168,8 +168,9 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
             m_nus_rx_cnt += i;
 
             if (rx_buf[len-1] == '\n' && rx_buf[len-2] == '\r') {             
-                parse_ble_query(m_nus_data_rx_buf, m_nus_rx_cnt); 
-                m_nus_rx_cnt = 0;             
+                parse_ble_query(m_nus_data_rx_buf, m_nus_rx_cnt - 2);                 
+                printf(m_nus_data_rx_buf);
+                m_nus_rx_cnt = 0;
             }
             
         } break;
@@ -191,24 +192,23 @@ uint32_t snow_ble_data_send(uint8_t* data, uint16_t len) {
     if (data[len-1] != '\n' && data[len-2] != '\r')
         return NRF_ERROR_INVALID_DATA;
     
-    uint8_t max_len = BLE_NUS_MAX_DATA_LEN;
+    uint16_t max_len = BLE_NUS_MAX_DATA_LEN;
     uint16_t current_pos = 0;
 
     // Notify main module that a transmission is about to start
     snow_slave_ble_on_tx_start();
 
     do {
-        // Send a chunk of data
-        err_code = ble_nus_data_send(&m_nus, data + current_pos, &max_len, m_conn_handle);
-
-        // Increase position pointer
-        current_pos += BLE_NUS_MAX_DATA_LEN;
-
         // If the remaining length is smaller than a data chunk
         if (len - current_pos < BLE_NUS_MAX_DATA_LEN) 
             // set the chunk length for the final one accordingly
             max_len = len - current_pos;
-        
+
+        // Send a chunk of data
+        err_code = ble_nus_data_send(&m_nus, data + current_pos, &max_len, m_conn_handle);
+
+        // Increase position pointer
+        current_pos += BLE_NUS_MAX_DATA_LEN;       
     } while (err_code == NRF_ERROR_RESOURCES);
 
     return err_code;

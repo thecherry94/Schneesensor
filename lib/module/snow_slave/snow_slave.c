@@ -164,15 +164,21 @@ void snow_slave_ble_send_device_info() {
 }
 
 void snow_slave_ble_send_error(uint8_t cmd, uint8_t err_code, uint8_t* err_desc, uint8_t err_desc_len) {
-    uint8_t* buf = (uint8_t*)malloc(2 + err_desc_len);
+    uint8_t* buf = (uint8_t*)malloc(4 + err_desc_len);
 
     buf[0] = cmd;
     buf[1] = err_code;
 
-    if (err_desc != NULL && err_desc_len != 0)
+    uint8_t offset = 0;
+    if (err_desc != NULL && err_desc_len != 0) {
         memcpy(buf+2, err_desc, err_desc_len);
+        offset = 1;
+    }
+    
+    buf[err_desc_len + 2 + offset] = '\r';
+    buf[err_desc_len + 3 + offset] = '\n';
 
-    snow_ble_data_send(buf, 2 + err_desc_len);
+    snow_ble_data_send(buf, 4 + err_desc_len);
 }
 
 
@@ -324,10 +330,6 @@ ret_code_t sensors_init() {
     snow_gps_init(SNOW_GPS_I2C_ADDR, &m_twi);
 }
 
-
-
-
-#ifdef __DEBUG__
 
 
 void test_ble() {
@@ -520,6 +522,8 @@ void test_ble() {
     }
 }
 
+
+#ifdef __DEBUG__
 
 
 void test_everything() {
