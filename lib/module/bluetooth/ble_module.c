@@ -73,14 +73,14 @@ static void parse_ble_command(uint8_t* cmd, uint8_t len) {
                 return;
             }
 
-            uint16_t interval = (cmd[1] << 8) | cmd[2];
+            uint16_t interval = ((uint16_t)cmd[1] << 8) | cmd[2];
             bool timestamp = cmd[3] == 1;
 
             snow_slave_toggle_continuous_measurement();
         } break;
 
         case 'm': {
-            uint16_t interval = (cmd[1] << 8) | cmd[2];
+            uint16_t interval = ((uint16_t)cmd[1] << 8) | cmd[2];
             uint8_t amount = cmd[3];
             snow_slave_single_measurement(interval, amount);
         } break;
@@ -139,7 +139,7 @@ static void parse_ble_query(uint8_t* cmd, uint16_t len) {
     uint16_t start = 0;
     for (uint8_t i = 0; i < len; i++) {
         if (cmd[i] == ';') {                       
-            parse_ble_command(cmd + start, i - start - 1);
+            parse_ble_command(cmd + start, i - start);
             start = i + 1;
         }
     }
