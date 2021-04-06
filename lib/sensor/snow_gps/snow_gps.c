@@ -1,17 +1,12 @@
 #include "snow_gps.h"
 #include "nrf_delay.h"
 
-#include "lib/module/minmea/minmea.h"
-
+#include "minmea.h"
 
 nrf_drv_twi_t* m_twi;
 uint8_t m_read_buf[SNOW_GPS_DATA_BUFFER_SIZE+1] = {0};
 
 snow_gps_position_information m_current_position;
-bool m_position_updated = false;
-
-uint8_t m_last_cfg_poll = 0;
-uint8_t m_last_cfg_sent = 0;
 
 ubx_packet m_last_cfg_packet = {
     .valid = SNOW_GPS_UBX_PCKG_INVALID
@@ -97,7 +92,7 @@ uint8_t snow_gps_init(uint8_t i2c_addr, nrf_drv_twi_t* twi) {
         m_twi = twi;
     }
 
-    m_last_position.valid = false;
+    m_current_position.valid = false;
 
     return NRF_SUCCESS;
 }
@@ -293,8 +288,6 @@ uint8_t snow_gps_process_nmea_line(uint8_t* line, uint8_t size) {
                 m_current_position.date = frame.date;
                 m_current_position.time = frame.time;
                 m_current_position.valid = frame.valid;
-
-                m_position_updated = true;
             }
         } break;       
         case MINMEA_SENTENCE_GGA: {
@@ -340,15 +333,8 @@ uint8_t snow_gps_process_nmea_line(uint8_t* line, uint8_t size) {
 }
 
 
-// Gets the current position buffered in memory
-// returns false if the current position 
-bool snow_gps_get_position(snow_gps_position_information* pos) {
+void snow_gps_get_position(snow_gps_position_information* pos) {
     *pos = m_current_position;
-
-    bool b = m_position_updated;
-    m_position_updated = false;
-
-    return b;
 }
 
 
@@ -384,14 +370,6 @@ uint8_t snow_gps_send_command(ubx_packet* p) {
     if (err_code != NRF_SUCCESS)_
         printf("Custom UBX package failed to sent!\n");
     #endif
-
-    // Reset cfg poll/sent control variable in case the message was not sent
-    if (p->cls == UBX_PCKG_CLASS_ACK && err_code != NRF_SUCCESS) {
-        if (p->len == 0)
-            m_last_cfg_poll = 0;
-        else
-            m_last_cfg_sent = 0;
-    }
 
     return err_code;
 }
@@ -433,54 +411,4 @@ void process_ubx_packet(ubx_packet* p) {
         // Unknown package class
         //
     }
-}
-
-
-// Sends power management configuration to the GNSS module
-//
-uint8_t snow_gps_configure_power_management(snow_gps_power_configuration* cfg) {
-
-    // For now only allow another cfg package after the last one was acknowledged
-    if (m_last_cfg_sent != 0)
-        return 0;
-
-    ubx_packet p;
-    p.cls = UBX_PCKG_CLASS_CFG;
-    p.id = UBX_PCKG_ID_CFG_PM2;
-    p.len = UBX_PCKG_CFG_PM2_LEN;
-
-    p.payload = (uint8_t*)malloc(UBX_PCKG_CFG_PM2_LEN);
-    memset(p.payload, 0, UBX_PCKG_CFG_PM2_LEN);
-
-    if (cfg->ext_int_pin == 1)
-        p.payload[0] |= 0x10;
-    
-    if (cfg->ext_int_wake) 
-        p.payload[0] |= 0x20;
-    
-    if (cfg->ext_int_backup)
-        p.payload[0] |= 0x40;
-
-    if (cfg->limit_current)
-        p.payload[1] |= 0x01;
-    
-    if (cfg->wait_time_fix) 
-        p.payload[2] |= 0x04;
-    
-    if (cfg->update_rtc)
-        p.payload[2] |= 0x08;
-
-    if (cfg->update_eph)
-        p.payload[2] |= 0x10;
-    
-    if (cfg->do_not_enter_off)
-        p.payload[3] |= 0x01;
-    
-    if (cfg->mode == SNOW_GPS_PWM_MODE_CYCLIC)
-        p.payload[3] |= 0x02;
-    
-    // Update current cfg package being sent
-    m_last_cfg_sent = UBX_PCKG_ID_CFG_PM2;
-
-    return snow_gps_send_command(&p);
 }

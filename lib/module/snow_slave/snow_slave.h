@@ -4,9 +4,17 @@ TODO:
 
  */ 
 
- #include "lib/sensor/snow_adxl362/snow_adxl362.h"
- #include "lib/sensor/snow_bme680/snow_bme680.h"
- #include "lib/sensor/snow_gps/snow_gps.h"
+#include "ble.h"
+#include "ble_hci.h"
+#include "ble_srv_common.h"
+#include "ble_advdata.h"
+#include "ble_advertising.h"
+#include "ble_conn_params.h"
+
+#include "ble_module.h"
+#include "snow_adxl362.h"
+#include "snow_bme680.h"
+#include "snow_gps.h"
 
 
 #ifndef SNOW_SLAVE_H
@@ -39,18 +47,52 @@ TODO:
 #define SNOW_BME680_1                     0x04
 
 
+#define SNOW_SLAVE_VERSION                0x01
+#define SNOW_SLAVE_REVISION               0x01
+
+
+
+#define SNOW_SLAVE_BLE_BUFFER_SIZE        128
+
 
 // Structs
 //
 
 // Struct for holding measurement values
 typedef struct snow_slave_measurement_t {
-    uint8_t measurements;
     struct snow_accl_xyz_t acceleration;
     struct bme680_field_data bme_data;
-    // Add field for GPS data
-    // Add field for snow moisture
+    struct snow_gps_position_information gps_data;
+    uint16_t snow_moisture;
+    uint16_t snow_hardness;
 } snow_slave_measurement_t;
+
+
+// Enums
+//
+
+// Enum for main program flow control
+typedef enum snow_slave_main_state_t {
+    SNOW_SLAVE_MAIN_IDLE,
+    SNOW_SLAVE_MAIN_CONTINUOUS,
+    SNOW_SLAVE_MAIN_SINGLE
+} snow_slave_state_t;
+
+
+// Enum for single measurement flow control
+typedef enum snow_slave_singlemeas_state_t {
+    SNOW_SLAVE_SINGLEMEAS_IDLE,
+    SNOW_SLAVE_SINGLEMEAS_ACCL,
+    SNOW_SLAVE_SINGLEMEAS_MEAS,
+    SNOW_SLAVE_SINGLE_MEAS_DONE
+} snow_slave_singlemeas_state_t;
+
+// Enum for continuous measurement flow control
+typedef enum snow_slave_contmeas_state_t {
+    SNOW_SLAVE_CONTMEAS_IDLE,
+    SNOW_SLAVE_CONTMEAS_BUFFER,
+    SNOW_SLAVE_CONTMEAS_SEND
+} snow_slave_contmeas_state_t;
 
 
 //
@@ -76,6 +118,13 @@ uint8_t snow_slave_check_components(uint8_t components);
 uint8_t snow_slave_reset_components(uint8_t components);
 
 
+void snow_slave_toggle_continuous_measurement();
+void snow_slave_single_measurement(uint16_t meas_interval, uint8_t meas_amount);
+void snow_slave_ble_send_device_info();
+void snow_slave_ble_send_error(uint8_t cmd, uint8_t err_code, uint8_t* err_desc, uint8_t err_desc_len);
+
+
+
 
 
 // General init functions
@@ -87,6 +136,8 @@ ret_code_t twi_init();
 // Init SPI
 ret_code_t spi_init();
 
+ret_code_t sensors_init();
+
 
 // Test functions
 //
@@ -94,6 +145,7 @@ ret_code_t spi_init();
 void test_bme();
 void test_adxl362();
 void test_gps();
+void test_ble();
 void test_everything();
 #endif 
 
@@ -101,9 +153,16 @@ void test_everything();
 snow_adxl362_ret_code_t nrf_spi_transfer(uint8_t* tx_buf, uint8_t tx_len, uint8_t* rx_buf, uint8_t rx_len, uint8_t cs_pin);
 
 
-// Callbacks / Events
+
+
+// 
+// Bluetooth functions
 //
-uint8_t snow_slave_on_measurement_completed();
+
+void snow_slave_ble_on_connected();
+void snow_slave_ble_on_disconnected();
+void snow_slave_ble_on_tx_done();
+void snow_slave_ble_on_tx_start();
 
 
 
