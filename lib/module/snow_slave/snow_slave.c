@@ -314,7 +314,7 @@ ret_code_t twi_init() {
 
 
 ret_code_t sensors_init() {
-    snow_bme680_init(&m_bme_dev, &m_twi, 20);
+    snow_bme680_init(&m_bme_dev, &m_twi, 28);
     snow_bme680_configure(&m_bme_dev, &m_meas_period);
 
     //m_adxl_dev1 = snow_adxl362_create_device(38, NULL);

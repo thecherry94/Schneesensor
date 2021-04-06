@@ -9,6 +9,7 @@ var m_nus_service;
 var m_rx_char;
 var m_tx_char;
 var m_connected = false;
+var m_continuous = false;
 
 var m_data_buf = "";
 
@@ -22,7 +23,7 @@ function toggle_connection() {
     if (m_connected) {
         disconnect();
     } else {
-        m_connected();
+        connect();
     }
 
     // TODO: Visual output
@@ -152,6 +153,7 @@ function send_next_chunk(a) {
     });
 }
 
+var prev = 25;
 
 function on_data_package_received(data) {
     if (data[0] == 'c') {
@@ -165,13 +167,23 @@ function on_data_package_received(data) {
         var pressure = parseInt(atoh(pres), 16);
         var humidity = parseInt(atoh(humi), 16);
 
+        var t = temperature / 100.0;
+        var p = pressure / 100.0;
+        var h = humidity / 1000.0;
 
-        console.log("T: " + (temperature / 100.0) + " degC | P: " + (pressure / 100.0) + " hPa + | H: " + (humidity / 1000.0) + " %rH");
+        var data = [];
+        data.push(t < 20 ? prev : t);
+        data.push(p);
+        data.push(h);
+
+        console.log("T: " + t < 20 ? prev : t + " degC | P: " + p + " hPa + | H: " + h + " %rH");
 
         var time = new Date();
         var label = time.getHours() + ":" + time.getMinutes() + ":" + time.getSeconds();
 
-        chart_add_data(m_chart, label, temperature / 100.0);
+        chart_add_data(m_chart, label, data);
+
+        prev = t < 20 ? prev : t;
     }
 }
 
@@ -187,6 +199,16 @@ function atoh(str) {
 
 
 
+function toggle_continuous() {
+    if (m_connected) {
+        nus_send_str("c!!1;\r\n");
+        m_continuous = !m_continuous;
+    }
+
+    document.getElementById("continuous").innerHTML = "Live Datenaufzeichnung " + (m_continuous ? "stoppen" : "starten");
+}
+
+
 function on_load() {
     m_ctx = document.getElementById("test_chart").getContext("2d");
     m_chart = new Chart(m_ctx, {
@@ -195,19 +217,49 @@ function on_load() {
             labels: [],
             datasets: [
                 {
-                    label: "Temperatur",
-                    data: []
+                    label: "Lufttemperatur (degC)",
+                    yAxisID: 'a',
+                    data: [],
+                    backgroundColor: 'rgb(255, 0, 0)'
+                },
+                {
+                    label: "Luftdruck (hPa)",
+                    yAxisID: 'b',
+                    data: [],
+                    backgroundColor: 'rgb(0, 255, 0)'
+                },
+                {
+                    label: "Luftfeuchte (%rH)",
+                    yAxisID: 'c',
+                    data: [],
+                    backgroundColor: 'rgb(0, 0, 255)'
                 }
             ]
+        },
+        options: {
+            scales: {
+                yAxes: [{
+                    id: 'a',
+                    type: 'linear',
+                    position: 'left' 
+                }, {
+                    id: 'b',
+                    type: 'linear',
+                    position: 'left'
+                }, {
+                    id: 'c',
+                    type: 'linear',
+                    position: 'left'
+                }]
+            }
         }
     });
 }
 
 function chart_add_data(chart, label, data) {
     chart.data.labels.push(label);
-    chart.data.datasets.forEach(dataset => {
-        dataset.data.push(data)
-    });
+    for (var i = 0; i < chart.data.datasets.length; i++) 
+        chart.data.datasets[i].data.push(data[i]);
     chart.update();
 }
 
