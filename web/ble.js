@@ -10,6 +10,12 @@ var m_rx_char;
 var m_tx_char;
 var m_connected = false;
 
+var m_data_buf = "";
+
+
+
+var m_chart;
+var m_ctx;
 
 
 function toggle_connection() {
@@ -108,9 +114,18 @@ function handle_notifications(ev) {
     
     let str = "";
     for (let i = 0; i < value.byteLength; i++) {
-        str += String.fromCharCode(value.getUint8(i));
+        var c = String.fromCharCode(value.getUint8(i));        
+        str += c;
+        m_data_buf += c;
+
+        var len = m_data_buf.length;
+        if (m_data_buf[len-2] == "\r" && m_data_buf[len-1] == "\n") {
+            on_data_package_received(m_data_buf);
+            m_data_buf = "";
+        }
     }
-    console.log(str);
+
+    //console.log(str);
 } 
 
 function nus_send_str(s) {
@@ -135,4 +150,71 @@ function send_next_chunk(a) {
             send_next_chunk(a.slice(MTU));
         }
     });
+}
+
+
+function on_data_package_received(data) {
+    if (data[0] == 'c') {
+
+        var temp = data.substring(1, 3).split('').reverse().join('');
+        var pres = data.substring(3, 7).split('').reverse().join('');
+        var humi = data.substring(7, 11).split('').reverse().join('');
+
+
+        var temperature = parseInt(atoh(temp), 16);
+        var pressure = parseInt(atoh(pres), 16);
+        var humidity = parseInt(atoh(humi), 16);
+
+
+        console.log("T: " + (temperature / 100.0) + " degC | P: " + (pressure / 100.0) + " hPa + | H: " + (humidity / 1000.0) + " %rH");
+
+        var time = new Date();
+        var label = time.getHours() + ":" + time.getMinutes() + ":" + time.getSeconds();
+
+        chart_add_data(m_chart, label, temperature / 100.0);
+    }
+}
+
+
+function atoh(str) {
+    var arr1 = [];
+    for (var n = 0, l = str.length; n < l; n ++) {
+        var hex = Number(str.charCodeAt(n)).toString(16);
+        arr1.push(hex);
+    }
+    return arr1.join('');
+}
+
+
+
+function on_load() {
+    m_ctx = document.getElementById("test_chart").getContext("2d");
+    m_chart = new Chart(m_ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: "Temperatur",
+                    data: []
+                }
+            ]
+        }
+    });
+}
+
+function chart_add_data(chart, label, data) {
+    chart.data.labels.push(label);
+    chart.data.datasets.forEach(dataset => {
+        dataset.data.push(data)
+    });
+    chart.update();
+}
+
+function chart_remove_data(chart) {
+    chart.data.labels.pop();
+    chart.data.datasets.forEach(dataset => {
+        dataset.data.pop();
+    });
+    chart.update();
 }

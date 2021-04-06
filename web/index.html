@@ -1,6 +1,7 @@
 <html>
     <head>
         <title>Schneesensor Web GUI</title>
+        <script src="chart.min.js"></script>
         <script src="ble.js"></script>
 
         <script>
@@ -10,7 +11,8 @@
         </script>
     </head>
 
-    <body>
+    <body onload="on_load()">
         <button id="test" onclick="on_test_click()">Test</button>
+        <div width="400" height="400"><canvas id="test_chart" width="200" height="200"></canvas></div>
     </body>
 </html>
