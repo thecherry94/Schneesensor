@@ -1,18 +1,84 @@
 <html>
     <head>
         <title>Schneesensor Web GUI</title>
-        <script src="chart.min.js"></script>
-        <script src="ble.js"></script>
-        <link rel="stylesheet" href="style.css">
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="css/uikit.min.css" />
+        <link rel="stylesheet" href="css/custom-style.css">
+        <script src="js/uikit.min.js"></script>
+        <script src="js/uikit-icons.min.js"></script>
+        <script src="js/chart.min.js"></script>
+        <script src="js/ble.js"></script>
+        
     </head>
 
     <body onload="on_load()">
-        <div>
-            <button id="toggle-connection" class="button-control" onclick="toggle_connection()">Verbinden</button>
-            <button id="toggle-continuous" class="button-control" onclick="toggle_continuous()">Live Datenaufzeichnung starten</button>
+        <nav class="uk-navbar-container uk-margin">
+            <div class="uk-navbar-left">
+                <a class="uk-navbar-toggle" uk-toggle="target: #navmenu">
+                    <span uk-navbar-toggle-icon></span> <span class="uk-margin-small-left">Navigation</span>
+                </a>
+                <button id="nb-btn-toggle-connection" class="uk-button uk-button-primary uk-navbar-item" onclick="toggle_connection()">Verbinden</button>
+                <div class="uk-card uk-card-default uk-card-small uk-navbar-item uk-navbar-right">
+                    <span class="uk-card-title">Verbindungsstatus</span>
+                    <div id="nb-txt-con-status" class="uk-card-body uk-text-small uk-text-bolder" style="color: rgb(255, 0, 0)">Nicht verbunden</div>
+                </div>
+            </div>
+        </nav>
+        <div id="test"></div>
+        <div id="navmenu" uk-offcanvas>
+            <div class="uk-offcanvas-bar">
+                <h1>Navigation</h1>
+                <ul class="uk-nav uk-nav-primary">
+                    <hr>
+                    <li><button class="uk-button uk-button-text" onclick="switch_content('content-home')"><h3>Home</h3></button></li>
+                    <hr>
+                    <li><button class="uk-button uk-button-text" onclick="switch_content('content-continuous-measurement')"><h3>Kontinuirliche Messung</h3></button></li>
+                    <hr>
+                    <li><button class="uk-button uk-button-text" onclick="switch_content('content-single-measurement')"><h3>Einzelne Messungen</h3></button></li>
+                    <hr>
+                </ul>
+            </div>
         </div>
-        <div><canvas id="chart-air-temperature" class="simple-chart"></canvas></div>
-        <div><canvas id="chart-air-pressure" class="simple-chart"></canvas></div>
-        <div><canvas id="chart-air-humidity" class="simple-chart"></canvas></div>
+
+
+        <div id="main-content">            
+            <div class="content" id="content-home">
+                <ul id="content-breadcrumb" class="uk-breadcrumb">
+                    <li>Schneesensor</li>
+                    <li>Home</li>
+                </ul>
+
+                <article class="uk-article">
+                    <h1 class="uk-article-title">HsKA Schneequalitätsmesssystem</h1>
+                    <p class="uk-article-meta"></p>
+                    <p>
+                        Willkommen bei der Web-App vom HsKA Schneequalitätsmesssystem. <br>
+                        Bitte drücken Sie auf den "Verbinden"-Button in der Navigationsleiste, damit sich ihr Gerät mit einem kompatiblen Endgerät verbinden kann.
+                    </p>
+                </article>
+            </div>
+
+            <div class="content" hidden id="content-continuous-measurement">             
+                <ul id="content-breadcrumb" class="uk-breadcrumb">
+                    <li>Schneesensor</li>
+                    <li>Kontinuirliche Messung</li>
+                </ul>
+                <div>           
+                    <button id="toggle-continuous" class="uk-button uk-button-default" onclick="toggle_continuous()">Live Datenaufzeichnung starten</button>
+                </div>
+                <div><canvas id="chart-air-temperature" class="simple-chart"></canvas></div>
+                <div><canvas id="chart-air-pressure" class="simple-chart"></canvas></div>
+                <div><canvas id="chart-air-humidity" class="simple-chart"></canvas></div>
+            </div>
+
+            <div class="content" hidden id="content-single-measurement">
+                <ul id="content-breadcrumb" class="uk-breadcrumb">
+                    <li>Schneesensor</li>
+                    <li>Einzelne Messungen</li>
+                </ul>
+                Lorem ipsum bla bla not implemented yet
+            </div>
+        </div>
     </body>
 </html>

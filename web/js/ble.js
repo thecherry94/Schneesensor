@@ -33,16 +33,10 @@ function toggle_connection() {
 
     if (m_connected) {
         disconnect();
-        document.getElementById("toggle-connection").innerHTML = "Verbinden";
-        btn_cont.disabled = true;
-    } else {
-        if (connect()) {
-            document.getElementById("toggle-connection").innerHTML = "Verbindung trennen";     
-            btn_cont.disabled = false;
-        }
-    }
-
-    // TODO: Visual output
+        
+    } else {        
+        connect();
+    }   
 }
 
 
@@ -59,6 +53,7 @@ function connect() {
         acceptAllDevices: true
     })
     .then(device => {
+        ui_set_conn_state(2);
         m_ble_device = device;
         console.log("Found: " + device.name);
         console.log("Connecting to GATT Server...");
@@ -97,6 +92,7 @@ function connect() {
         console.log("Notifications started");
         m_tx_char.addEventListener('characteristicvaluechanged', handle_notifications);
         m_connected = true;
+        ui_set_conn_state(m_connected);
     })
 
     return m_connected;
@@ -117,6 +113,7 @@ function disconnect() {
     } else {
         console.log('> Bluetooth Device is already disconnected');
     }
+    ui_set_conn_state(m_connected);
 }
 
 
@@ -232,6 +229,46 @@ function toggle_continuous() {
     }
 
     document.getElementById("toggle-continuous").innerHTML = "Live Datenaufzeichnung " + (m_continuous ? "stoppen" : "starten");
+}
+
+
+function ui_set_conn_state(state) {
+    var txt_con_status = document.getElementById("nb-txt-con-status");
+    var btn_con = document.getElementById("nb-btn-toggle-connection");
+
+    if (state == 2) {
+        txt_con_status.innerHTML = "Verbinden...";
+        txt_con_status.style.color = "rgb(204,204,0)";
+
+        btn_con.innerHTML = "Verbinden...";
+        btn_con.classList.remove("uk-button-danger");
+        btn_con.classList.add("uk-button-primary"); 
+    }
+    else if (state) {
+        txt_con_status.innerHTML = "Verbunden";
+        txt_con_status.style.color = "rgb(34,139,34)";
+
+        btn_con.innerHTML = "Verbindung trennen";
+        btn_con.classList.remove("uk-button-primary");
+        btn_con.classList.add("uk-button-danger");
+    } else {
+        txt_con_status.innerHTML = "Nicht verbunden";
+        txt_con_status.style.color = "rgb(255, 0, 0)";
+
+        btn_con.innerHTML = "Verbinden";
+        btn_con.classList.remove("uk-button-danger");
+        btn_con.classList.add("uk-button-primary");      
+    }
+}
+
+
+function switch_content(id) {
+    var elements = document.getElementsByClassName("content");
+    for (var i = 0; i < elements.length; i++) {
+        elements[i].hidden = true;
+    }
+    document.getElementById(id).hidden = false;
+    UIkit.offcanvas("#navmenu").hide();
 }
 
 
