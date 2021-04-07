@@ -15,8 +15,14 @@ var m_data_buf = "";
 
 
 
-var m_chart;
-var m_ctx;
+//var m_chart;
+var m_ctx_air_temperature;
+var m_ctx_air_pressure;
+var m_ctx_air_humidity;
+
+var m_chart_air_temperature;
+var m_chart_air_pressure;
+var m_chart_air_humidity;
 
 
 function toggle_connection() {
@@ -210,7 +216,15 @@ function toggle_continuous() {
 
 
 function on_load() {
-    m_ctx = document.getElementById("test_chart").getContext("2d");
+    m_ctx_air_temperature = document.getElementById("chart-air-temperature").getContext("2d");
+    m_ctx_air_pressure = document.getElementById("chart-air-pressure").getContext("2d");
+    m_ctx_air_humidity = document.getElementById("chart-air-humidity").getContext("2d");
+
+    m_chart_air_temperature = create_simple_line_chart(m_ctx_air_temperature, "Lufttemperature [degC]", 'rgb(255, 0, 0)');
+    m_chart_air_pressure = create_simple_line_chart(m_ctx_air_pressure, "Luftdruck [hPa]", 'rgb(0, 255, 0)');
+    m_chart_air_humidity = create_simple_line_chart(m_ctx_air_humidity, "Luftfeuchtigkeit [%rH]", 'rgb(0, 0, 255)');
+
+    /*
     m_chart = new Chart(m_ctx, {
         type: 'line',
         data: {
@@ -254,12 +268,42 @@ function on_load() {
             }
         }
     });
+    */
+}
+
+function create_simple_line_chart(_ctx, _label, _line_color) {
+    var chart = new Chart(_ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: _label,
+                    data: [],
+                    backgroundColor: _line_color
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+
+    return chart;
 }
 
 function chart_add_data(chart, label, data) {
     chart.data.labels.push(label);
-    for (var i = 0; i < chart.data.datasets.length; i++) 
-        chart.data.datasets[i].data.push(data[i]);
+
+    if(chart.data.datasets.length > 1)
+        for (var i = 0; i < chart.data.datasets.length; i++) 
+            chart.data.datasets[i].data.push(data[i]);
+    else if (data.length != null)
+        chart.data.datasets[0].data.push(data);
+    else
+        console.error("chart_add_data: Parameter mismatch");
+
     chart.update();
 }
 
