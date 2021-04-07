@@ -503,8 +503,10 @@ void test_ble() {
                         m_ble_tx_buf[15] = (uint8_t)(m_accl.z);
                         m_ble_tx_buf[16] = (uint8_t)((m_accl.z >> 8));
 
-                        m_ble_tx_buf[17] = '\r';
-                        m_ble_tx_buf[18] = '\n';
+                        m_ble_tx_buf[17] = ';';
+
+                        m_ble_tx_buf[18] = '\r';
+                        m_ble_tx_buf[19] = '\n';
 
                         m_contmeas_state = SNOW_SLAVE_CONTMEAS_SEND;
                     } break;
@@ -512,7 +514,7 @@ void test_ble() {
                     case SNOW_SLAVE_CONTMEAS_SEND: {
                         // Send the data to device
                         if (ble_send_ready()) {                                                      
-                            err_code = snow_ble_data_send(m_ble_tx_buf, 19);                                             
+                            err_code = snow_ble_data_send(m_ble_tx_buf, 20);                                             
                         }
 
                         if (err_code == NRF_SUCCESS)

@@ -8,8 +8,8 @@
 
     <body onload="on_load()">
         <div>
-            <button id="test" onclick="toggle_connection()">Verbinden</button>
-            <button id="continuous" onclick="toggle_continuous()">Live Datenaufzeichnung starten</button>
+            <button id="toggle-connection" class="button-control" onclick="toggle_connection()">Verbinden</button>
+            <button id="toggle-continuous" class="button-control" onclick="toggle_continuous()">Live Datenaufzeichnung starten</button>
         </div>
         <div><canvas id="chart-air-temperature" class="simple-chart"></canvas></div>
         <div><canvas id="chart-air-pressure" class="simple-chart"></canvas></div>

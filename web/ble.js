@@ -28,10 +28,18 @@ var m_chart_air_humidity;
 
 
 function toggle_connection() {
+    var btn_cont = document.getElementById("toggle-continuous");
+    btn_cont.innerHTML = "Live Datenaufzeichnung starten";
+
     if (m_connected) {
         disconnect();
+        document.getElementById("toggle-connection").innerHTML = "Verbinden";
+        btn_cont.disabled = true;
     } else {
-        connect();
+        if (connect()) {
+            document.getElementById("toggle-connection").innerHTML = "Verbindung trennen";     
+            btn_cont.disabled = false;
+        }
     }
 
     // TODO: Visual output
@@ -89,8 +97,9 @@ function connect() {
         console.log("Notifications started");
         m_tx_char.addEventListener('characteristicvaluechanged', handle_notifications);
         m_connected = true;
-        
     })
+
+    return m_connected;
 }
 
 
@@ -127,7 +136,7 @@ function handle_notifications(ev) {
 
         if (i > 2) {
             if (m_data_buf.getUint8(idx-1) == 0x0D && m_data_buf.getUint8(idx) == 0x0A) {
-                on_data_package_received(m_data_buf);
+                parse_data_packages(m_data_buf);
 
                 m_array_buf = new ArrayBuffer(256);
                 m_data_buf = new DataView(m_array_buf);
@@ -165,9 +174,22 @@ function send_next_chunk(a) {
 }
 
 
-function on_data_package_received(data) {
-    if (data.getUint8(0) == atoh('c')) {
+function parse_data_packages(data) {
+    var offset = 0;
+    var len = 0;
+    for (let i = 0; i < data.byteLength; i++) {
+        if (data.getUint8(i) == atoh(';')) {
+            len = i - offset - 1;
+            on_data_package_received(new DataView(data.buffer, offset), len);
+            offset = i + 1;
+        }
+    }
+}
 
+
+function on_data_package_received(data, len) {
+    if (data.getUint8(0) == atoh('c')) {
+ 
         var temp = data.getInt16(1, 3, true);
         var pres = data.getUint32(3, 7, true);
         var humi = data.getUint32(7, 11, true);
@@ -209,7 +231,7 @@ function toggle_continuous() {
         m_continuous = !m_continuous;
     }
 
-    document.getElementById("continuous").innerHTML = "Live Datenaufzeichnung " + (m_continuous ? "stoppen" : "starten");
+    document.getElementById("toggle-continuous").innerHTML = "Live Datenaufzeichnung " + (m_continuous ? "stoppen" : "starten");
 }
 
 
@@ -297,7 +319,7 @@ function chart_add_data(chart, label, data) {
     if(chart.data.datasets.length > 1)
         for (var i = 0; i < chart.data.datasets.length; i++) 
             chart.data.datasets[i].data.push(data[i]);
-    else if (data.length != null)
+    else if (data.length == null)
         chart.data.datasets[0].data.push(data);
     else
         console.error("chart_add_data: Parameter mismatch");
