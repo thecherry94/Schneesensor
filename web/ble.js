@@ -11,7 +11,7 @@ var m_tx_char;
 var m_connected = false;
 var m_continuous = false;
 
-var m_data_buf = "";
+var m_data_buf = [];
 
 
 
@@ -119,20 +119,16 @@ function handle_notifications(ev) {
     console.log("notification");
     var value = ev.target.value;
     
-    let str = "";
     for (let i = 0; i < value.byteLength; i++) {
-        var c = String.fromCharCode(value.getUint8(i));        
-        str += c;
-        m_data_buf += c;
+        var c = value.getUint8(i);  
+        m_data_buf.push(c);
 
         var len = m_data_buf.length;
-        if (m_data_buf[len-2] == "\r" && m_data_buf[len-1] == "\n") {
+        if (m_data_buf[len-2] == 0x0D && m_data_buf[len-1] == 0x0A) {
             on_data_package_received(m_data_buf);
-            m_data_buf = "";
+            m_data_buf = [];
         }
     }
-
-    //console.log(str);
 } 
 
 function nus_send_str(s) {
@@ -159,37 +155,26 @@ function send_next_chunk(a) {
     });
 }
 
-var prev = 25;
 
 function on_data_package_received(data) {
-    if (data[0] == 'c') {
+    if (data[0] == atoh('c')) {
 
-        var temp = data.substring(1, 3).split('').reverse().join('');
-        var pres = data.substring(3, 7).split('').reverse().join('');
-        var humi = data.substring(7, 11).split('').reverse().join('');
+        var temp = new DataView(new Uint8Array(data.slice(1, 3).reverse()).buffer).getInt16();
+        var pres = new DataView(new Uint8Array(data.slice(3, 7).reverse()).buffer).getUint32();
+        var humi = new DataView(new Uint8Array(data.slice(7, 11).reverse()).buffer).getUint32();
 
+        var temperature = temp / 100.0;
+        var pressure = pres / 100.0;
+        var humidity = humi / 1000.0;
 
-        var temperature = parseInt(atoh(temp), 16);
-        var pressure = parseInt(atoh(pres), 16);
-        var humidity = parseInt(atoh(humi), 16);
-
-        var t = temperature / 100.0;
-        var p = pressure / 100.0;
-        var h = humidity / 1000.0;
-
-        var data = [];
-        data.push(t < 20 ? prev : t);
-        data.push(p);
-        data.push(h);
-
-        console.log("T: " + t < 20 ? prev : t + " degC | P: " + p + " hPa + | H: " + h + " %rH");
+        console.log("T: " + temperature + " degC | P: " + pressure + " hPa + | H: " + humidity + " %rH");
 
         var time = new Date();
         var label = time.getHours() + ":" + time.getMinutes() + ":" + time.getSeconds();
 
-        chart_add_data(m_chart, label, data);
-
-        prev = t < 20 ? prev : t;
+        chart_add_data(m_chart_air_temperature, label, temperature);
+        chart_add_data(m_chart_air_pressure, label, pressure);
+        chart_add_data(m_chart_air_humidity, label, humidity);
     }
 }
 
@@ -197,12 +182,16 @@ function on_data_package_received(data) {
 function atoh(str) {
     var arr1 = [];
     for (var n = 0, l = str.length; n < l; n ++) {
-        var hex = Number(str.charCodeAt(n)).toString(16);
+        var hex = Number(str.charCodeAt(n));
         arr1.push(hex);
     }
     return arr1.join('');
 }
 
+function u8toi(arr) {
+    let buffer = Buffer.from(arr);
+    return buffer.readUIntBE(0, arr.length);
+}
 
 
 function toggle_continuous() {
