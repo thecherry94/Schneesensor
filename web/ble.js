@@ -11,7 +11,9 @@ var m_tx_char;
 var m_connected = false;
 var m_continuous = false;
 
-var m_data_buf = [];
+var m_array_buf = new ArrayBuffer(256);
+var m_data_buf = new DataView(m_array_buf, 0);
+var m_data_offset = 0;
 
 
 
@@ -120,15 +122,22 @@ function handle_notifications(ev) {
     var value = ev.target.value;
     
     for (let i = 0; i < value.byteLength; i++) {
-        var c = value.getUint8(i);  
-        m_data_buf.push(c);
+        var idx = i + m_data_offset;
+        m_data_buf.setUint8(idx, value.getUint8(i));      
 
-        var len = m_data_buf.length;
-        if (m_data_buf[len-2] == 0x0D && m_data_buf[len-1] == 0x0A) {
-            on_data_package_received(m_data_buf);
-            m_data_buf = [];
+        if (i > 2) {
+            if (m_data_buf.getUint8(idx-1) == 0x0D && m_data_buf.getUint8(idx) == 0x0A) {
+                on_data_package_received(m_data_buf);
+
+                m_array_buf = new ArrayBuffer(256);
+                m_data_buf = new DataView(m_array_buf);
+                m_data_offset = 0;
+                return;
+            }
         }
     }
+
+    m_data_offset += value.byteLength;
 } 
 
 function nus_send_str(s) {
@@ -157,11 +166,11 @@ function send_next_chunk(a) {
 
 
 function on_data_package_received(data) {
-    if (data[0] == atoh('c')) {
+    if (data.getUint8(0) == atoh('c')) {
 
-        var temp = new DataView(new Uint8Array(data.slice(1, 3).reverse()).buffer).getInt16();
-        var pres = new DataView(new Uint8Array(data.slice(3, 7).reverse()).buffer).getUint32();
-        var humi = new DataView(new Uint8Array(data.slice(7, 11).reverse()).buffer).getUint32();
+        var temp = data.getInt16(1, 3, true);
+        var pres = data.getUint32(3, 7, true);
+        var humi = data.getUint32(7, 11, true);
 
         var temperature = temp / 100.0;
         var pressure = pres / 100.0;
