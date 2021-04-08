@@ -187,7 +187,8 @@ function parse_data_packages(data) {
 
 
 function on_data_package_received(data, len) {
-    if (data.getUint8(0) == atoh('c')) {
+    var cmd = data.getUint8(0);
+    if (cmd == atoh('c')) {
  
         var temp = data.getInt16(1, 3, true);
         var pres = data.getUint32(3, 7, true);
@@ -205,6 +206,8 @@ function on_data_package_received(data, len) {
         chart_add_data(m_chart_air_temperature, label, temperature);
         chart_add_data(m_chart_air_pressure, label, pressure);
         chart_add_data(m_chart_air_humidity, label, humidity);
+    } else if (cmd == atoh('m')) {
+        console.log("m");
     }
 }
 
@@ -261,19 +264,6 @@ function ui_set_conn_state(state) {
         btn_con.classList.remove("uk-button-danger");
         btn_con.classList.add("uk-button-primary");      
     }
-}
-
-
-function switch_content(id) {
-    var content = document.getElementById(id);
-    if (content == null)
-        return;
-
-    fade(document.getElementById(m_active_content_id));
-    unfade(content);
-    m_active_content_id = id;
-
-    UIkit.offcanvas("#navmenu").hide();
 }
 
 

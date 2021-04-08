@@ -34,10 +34,9 @@
             <div class="uk-offcanvas-bar">
                 <h1>Navigation</h1>
                 <ul class="uk-nav uk-nav-primary" uk-switcher="connect: #main-content-nav; connect: .content-class; animation: uk-animation-fade">
-                    <li><a href="#">Home</a></li>
-                    <li><a href="#">Endgerätinformationen</a></li>
-                    <li><a href="#">Kontinuierliche Messung</a></li>
-                    <li><a href="#">Einzelne Messungen</a></li>
+                    <li><a href="#" onclick="UIkit.offcanvas('#navmenu').hide()">Home</a></li>
+                    <li><a href="#" onclick="UIkit.offcanvas('#navmenu').hide()">Kontinuierliche Messung</a></li>
+                    <li><a href="#" onclick="UIkit.offcanvas('#navmenu').hide()">Einzelne Messungen</a></li>
                 </ul>
             </div>
         </div>
@@ -51,12 +50,6 @@
                             <ul id="content-breadcrumb" class="uk-breadcrumb">
                                 <li>Schneesensor</li>
                                 <li>Home</li>
-                            </ul>
-                        </li>
-                        <li>
-                            <ul id="content-breadcrumb" class="uk-breadcrumb">
-                                <li>Schneesensor</li>
-                                <li>Endgerätinformationen</li>
                             </ul>
                         </li>
                         <li>
@@ -78,19 +71,32 @@
             <div>
                 <ul id="main-content-nav" class="uk-switcher content-class">
                     <li>
-                        <article class="uk-article">
-                            <h1 class="uk-article-title">HsKA Schneequalitätsmesssystem</h1>
-                            <p class="uk-article-meta"></p>
-                            <p>
-                                Willkommen bei der Web-App vom HsKA Schneequalitätsmesssystem. <br>
-                                Bitte drücken Sie auf den "Verbinden"-Button, der sich in der Navigationsleiste befindet, damit Sie sich mit einem kompatiblen Endgerät verbinden können. <br>
-                                Sämtliche Funktionen stehen erst nach dem Aufbau einer Verbindung zu Verfügung.
-                            </p>
-                        </article>
-                    </li>
+                        <ul uk-tab>
+                            <li><a href="#">Startseite</a></li>
+                            <li><a href="#">Endgerätinformationen</a></li>
+                            <li><a href="#">App-Info</a></li>
+                        </ul>
+                        <ul class="uk-switcher">
+                            <li>
+                                <article class="uk-article">
+                                    <h1 class="uk-article-title">HsKA Schneequalitätsmesssystem</h1>
+                                    <p class="uk-article-meta"></p>
+                                    <p>
+                                        Willkommen bei der Web-App vom HsKA Schneequalitätsmesssystem. <br>
+                                        Bitte drücken Sie auf den "Verbinden"-Button, der sich in der Navigationsleiste befindet, damit Sie sich mit einem kompatiblen Endgerät verbinden können. <br>
+                                        Sämtliche Funktionen stehen erst nach dem Aufbau einer Verbindung zu Verfügung.
+                                    </p>
+                                </article>
+                            </li>
 
-                    <li>
-                        Lorem ipsum bla bla not implemented yet
+                            <li>
+                                Not implemented yet
+                            </li>
+
+                            <li>
+                                Alpha Version
+                            </li>
+                        </ul>                
                     </li>
 
                     <li>   
@@ -106,7 +112,29 @@
                     </li>
 
                     <li>
-                        Lorem ipsum bla bla not implemented yet
+                        <p>Aktuelle Messreihe: Keine</p>      
+                        <div>               
+                            <button class="uk-button uk-button-primary">Neue Messreihe anlegen</button>
+                            <button class="uk-button uk-button-default">Messreihe exportieren (CSV)</button>
+                            <button class="uk-button uk-button-danger">Messreihe löschen</button>
+                        </div>
+                        <div>
+                            <ul uk-tab>
+                                <li><a href="#">Tabelle</a></li>
+                                <li><a href="#">Google-Maps</a></li>
+                            </ul>
+
+                            <ul class="uk-switcher">
+                                <li>
+                                    Tabellarische Ansicht der einzelnen Messwerte
+                                </li>
+
+                                <li>
+                                    Ansicht der einzelnen Messwerte mit Markierung auf Google-Maps <br>
+                                    Dieses Feature steht nur zur Verfügung, wenn eine Internetverbindung vorhanden ist
+                                </li>
+                            </ul>
+                        </div>  
                     </li>
                 </ul>
             </div>
