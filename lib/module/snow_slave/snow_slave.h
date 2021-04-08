@@ -68,6 +68,12 @@ typedef struct snow_slave_measurement_t {
 } snow_slave_measurement_t;
 
 
+typedef struct bme_data_buffer {
+    int64_t   temperature;
+    uint64_t  pressure;
+    uint64_t  humidity;
+} bme_data_buffer;
+
 // Enums
 //
 
@@ -93,6 +99,7 @@ typedef enum snow_slave_contmeas_state_t {
     SNOW_SLAVE_CONTMEAS_BUFFER,
     SNOW_SLAVE_CONTMEAS_SEND
 } snow_slave_contmeas_state_t;
+
 
 
 //
