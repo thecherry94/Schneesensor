@@ -15,6 +15,8 @@ var m_array_buf = new ArrayBuffer(256);
 var m_data_buf = new DataView(m_array_buf, 0);
 var m_data_offset = 0;
 
+var m_active_content_id = "";
+
 
 
 //var m_chart;
@@ -28,7 +30,7 @@ var m_chart_air_humidity;
 
 
 function toggle_connection() {
-    var btn_cont = document.getElementById("toggle-continuous");
+    var btn_cont = document.getElementById("btn-cont-toggle-continuous");
     btn_cont.innerHTML = "Live Datenaufzeichnung starten";
 
     if (m_connected) {
@@ -263,23 +265,36 @@ function ui_set_conn_state(state) {
 
 
 function switch_content(id) {
-    var elements = document.getElementsByClassName("content");
-    for (var i = 0; i < elements.length; i++) {
-        elements[i].hidden = true;
-    }
-    document.getElementById(id).hidden = false;
+    var content = document.getElementById(id);
+    if (content == null)
+        return;
+
+    fade(document.getElementById(m_active_content_id));
+    unfade(content);
+    m_active_content_id = id;
+
     UIkit.offcanvas("#navmenu").hide();
 }
 
 
 function on_load() {
+    m_active_content_id = "content-home";
+
     m_ctx_air_temperature = document.getElementById("chart-air-temperature").getContext("2d");
     m_ctx_air_pressure = document.getElementById("chart-air-pressure").getContext("2d");
     m_ctx_air_humidity = document.getElementById("chart-air-humidity").getContext("2d");
 
-    m_chart_air_temperature = create_simple_line_chart(m_ctx_air_temperature, "Lufttemperature [degC]", 'rgb(255, 0, 0)');
+    m_chart_air_temperature = create_simple_line_chart(m_ctx_air_temperature, "Lufttemperatur [degC]", 'rgb(255, 0, 0)');
     m_chart_air_pressure = create_simple_line_chart(m_ctx_air_pressure, "Luftdruck [hPa]", 'rgb(0, 255, 0)');
     m_chart_air_humidity = create_simple_line_chart(m_ctx_air_humidity, "Luftfeuchtigkeit [%rH]", 'rgb(0, 0, 255)');
+
+    document.getElementsByClassName("content").forEach(element => {
+        element.style.opacity = 0.1;
+        element.style.filter = 'alpha(opacity=' + 0.1 * 100 + ")";
+    });
+
+    document.getElementsByClassName("content-start")[0].opacity = 1;
+    document.getElementsByClassName("content-start")[0].filter = 'alpha(opacity=' + 100 + ")";
 
     /*
     m_chart = new Chart(m_ctx, {
@@ -370,4 +385,42 @@ function chart_remove_data(chart) {
         dataset.data.pop();
     });
     chart.update();
+}
+
+
+function fade(element) {
+    var op = 1;  // initial opacity
+    var timer = setInterval(function () {
+        if (op <= 0.05){
+            clearInterval(timer);
+            element.hidden = true;
+        }
+        element.style.opacity = op;
+        element.style.filter = 'alpha(opacity=' + op * 100 + ")";
+        op -= op * 0.05;
+    }, 25);
+}
+
+
+function unfade(element) {
+    var op = 0.05;  // initial opacity
+    element.hidden = false;
+    var timer = setInterval(function () {
+        if (op >= 1){
+            clearInterval(timer);
+        }
+        element.style.opacity = op;
+        element.style.filter = 'alpha(opacity=' + op * 100 + ")";
+        op += op * 0.05;
+    }, 25);
+}
+
+
+function display_not_impl_notification() {
+    UIkit.notification({
+        message: "Feature noch nicht implementiert!",
+        status: "danger",
+        pos: "top-center",
+        timeout: 5000
+    });
 }

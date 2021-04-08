@@ -29,11 +29,13 @@
         <div id="navmenu" uk-offcanvas>
             <div class="uk-offcanvas-bar">
                 <h1>Navigation</h1>
-                <ul class="uk-nav uk-nav-primary">
+                <ul class="uk-nav uk-nav-primary" uk-switcher="connect: #main-content-nav; animation: uk-animation-fade">
                     <hr>
                     <li><button class="uk-button uk-button-text" onclick="switch_content('content-home')"><h3>Home</h3></button></li>
                     <hr>
-                    <li><button class="uk-button uk-button-text" onclick="switch_content('content-continuous-measurement')"><h3>Kontinuirliche Messung</h3></button></li>
+                    <li><button class="uk-button uk-button-text" onclick="switch_content('content-device-info')"><h3>Endgerätinformationen</h3></button></li>
+                    <hr>
+                    <li><button class="uk-button uk-button-text" onclick="switch_content('content-continuous-measurement')"><h3>Kontinuierliche Messung</h3></button></li>
                     <hr>
                     <li><button class="uk-button uk-button-text" onclick="switch_content('content-single-measurement')"><h3>Einzelne Messungen</h3></button></li>
                     <hr>
@@ -41,6 +43,7 @@
             </div>
         </div>
 
+        
 
         <div id="main-content">            
             <div class="content" id="content-home">
@@ -54,22 +57,34 @@
                     <p class="uk-article-meta"></p>
                     <p>
                         Willkommen bei der Web-App vom HsKA Schneequalitätsmesssystem. <br>
-                        Bitte drücken Sie auf den "Verbinden"-Button in der Navigationsleiste, damit sich ihr Gerät mit einem kompatiblen Endgerät verbinden kann.
+                        Bitte drücken Sie auf den "Verbinden"-Button, der sich in der Navigationsleiste befindet, damit Sie sich mit einem kompatiblen Endgerät verbinden können. <br>
+                        Sämtliche Funktionen stehen erst nach dem Aufbau einer Verbindung zu Verfügung.
                     </p>
                 </article>
+            </div>
+
+            <div class="content content-start" hidden id="content-device-info">
+                <ul id="content-breadcrumb" class="uk-breadcrumb">
+                    <li>Schneesensor</li>
+                    <li>Endgerätinformationen</li>
+                </ul>
+                Lorem ipsum bla bla not implemented yet
             </div>
 
             <div class="content" hidden id="content-continuous-measurement">             
                 <ul id="content-breadcrumb" class="uk-breadcrumb">
                     <li>Schneesensor</li>
-                    <li>Kontinuirliche Messung</li>
-                </ul>
-                <div>           
-                    <button id="toggle-continuous" class="uk-button uk-button-default" onclick="toggle_continuous()">Live Datenaufzeichnung starten</button>
+                    <li>Kontinuierliche Messung</li>
+                </ul>     
+                <div>
+                    <button id="btn-cont-toggle-continuous" class="uk-button uk-button-primary" onclick="toggle_continuous()">Live Datenaufzeichnung starten</button>
+                    <button id="btn-cont-export-csv" class="uk-button uk-button-default" onclick="display_not_impl_notification()">CSV Export</button>           
                 </div>
-                <div><canvas id="chart-air-temperature" class="simple-chart"></canvas></div>
-                <div><canvas id="chart-air-pressure" class="simple-chart"></canvas></div>
-                <div><canvas id="chart-air-humidity" class="simple-chart"></canvas></div>
+                <div class="simple-chart-container">
+                    <div class="simple-chart"><canvas id="chart-air-temperature"></canvas></div>
+                    <div class="simple-chart"><canvas id="chart-air-pressure"></canvas></div>
+                    <div class="simple-chart"><canvas id="chart-air-humidity"></canvas></div>
+                </div>
             </div>
 
             <div class="content" hidden id="content-single-measurement">
