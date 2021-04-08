@@ -151,6 +151,11 @@ void snow_slave_single_measurement(uint16_t meas_interval, uint8_t meas_amount) 
     m_single_meas_interval = meas_interval;
     m_single_meas_amount = meas_amount;
 
+    for (uint8_t num_tries = 5; num_tries != 0; num_tries--) {
+        snow_gps_read_data();
+
+    }
+
     app_timer_start(m_accl_timer_id, m_single_meas_interval, NULL);
 }
 
@@ -179,6 +184,7 @@ void snow_slave_ble_send_error(uint8_t cmd, uint8_t err_code, uint8_t* err_desc,
     buf[err_desc_len + 3 + offset] = '\n';
 
     snow_ble_data_send(buf, 4 + err_desc_len);
+    free(buf);
 }
 
 
@@ -207,7 +213,7 @@ void snow_slave_ble_on_tx_start() {
 }
 
 
-void snow_slave_toggle_continuous_measurement() {
+void snow_slave_toggle_continuous_measurement(uint16_t interval) {
     if (m_main_state == SNOW_SLAVE_MAIN_SINGLE) {
         const uint8_t err_msg[] = "Action blocked. Measurement already started.";
         snow_slave_ble_send_error('c', SNOW_BLE_ERROR_ACTION_BLOCKED, err_msg, strlen(err_msg));
@@ -220,7 +226,7 @@ void snow_slave_toggle_continuous_measurement() {
         app_timer_start(m_gps_timer_id, GPS_TIMER_INTERVAL, NULL);
         app_timer_start(m_bme_timer_id, BME_TIMER_INTERVAL, NULL);
         app_timer_start(m_accl_timer_id, ACCL_TIMER_INTERVAL, NULL);
-        app_timer_start(m_cont_timer_id, CONT_TIMER_INTERVAL, NULL);
+        app_timer_start(m_cont_timer_id, interval == 0 && interval <= 5000 ? : CONT_TIMER_INTERVAL : interval, NULL);
     } else {
         app_timer_stop(m_gps_timer_id);
         app_timer_stop(m_bme_timer_id);
@@ -491,7 +497,6 @@ void test_ble() {
                         m_ble_tx_buf[8] = (uint8_t)((m_bme_data.humidity >> 8));
                         m_ble_tx_buf[9] = (uint8_t)((m_bme_data.humidity >> 16));
                         m_ble_tx_buf[10] = (uint8_t)((m_bme_data.humidity >> 24) );
-
 
 
                         m_ble_tx_buf[11] = (uint8_t)(m_accl.x);

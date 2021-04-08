@@ -112,6 +112,16 @@ typedef struct snow_gps_position_information {
 } snow_gps_position_information;
 
 
+typedef struct snow_gps_position_information_raw {
+    struct minmea_float latitude;
+    struct minmea_float longitude;
+    struct minmea_float speed;
+    struct minmea_date date;
+    struct minmea_time time;
+    bool valid;
+} snow_gps_position_information_raw;
+
+
 // Structure to hold UBX protocol package information for sending and receiving configuration options
 // cls <=> class
 // id <=> id
@@ -144,6 +154,7 @@ uint8_t snow_gps_on_data_read();
 uint8_t snow_gps_process_nmea_line(uint8_t* line, uint8_t size);
 
 void snow_gps_get_position(snow_gps_position_information* pos);
+void snow_gps_get_position_raw(snow_gps_position_information_raw* pos);
 
 void calculate_checksum(ubx_packet* p);
 
