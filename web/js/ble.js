@@ -288,14 +288,6 @@ function on_load() {
     m_chart_air_pressure = create_simple_line_chart(m_ctx_air_pressure, "Luftdruck [hPa]", 'rgb(0, 255, 0)');
     m_chart_air_humidity = create_simple_line_chart(m_ctx_air_humidity, "Luftfeuchtigkeit [%rH]", 'rgb(0, 0, 255)');
 
-    document.getElementsByClassName("content").forEach(element => {
-        element.style.opacity = 0.1;
-        element.style.filter = 'alpha(opacity=' + 0.1 * 100 + ")";
-    });
-
-    document.getElementsByClassName("content-start")[0].opacity = 1;
-    document.getElementsByClassName("content-start")[0].filter = 'alpha(opacity=' + 100 + ")";
-
     /*
     m_chart = new Chart(m_ctx, {
         type: 'line',
@@ -386,35 +378,6 @@ function chart_remove_data(chart) {
     });
     chart.update();
 }
-
-
-function fade(element) {
-    var op = 1;  // initial opacity
-    var timer = setInterval(function () {
-        if (op <= 0.05){
-            clearInterval(timer);
-            element.hidden = true;
-        }
-        element.style.opacity = op;
-        element.style.filter = 'alpha(opacity=' + op * 100 + ")";
-        op -= op * 0.05;
-    }, 25);
-}
-
-
-function unfade(element) {
-    var op = 0.05;  // initial opacity
-    element.hidden = false;
-    var timer = setInterval(function () {
-        if (op >= 1){
-            clearInterval(timer);
-        }
-        element.style.opacity = op;
-        element.style.filter = 'alpha(opacity=' + op * 100 + ")";
-        op += op * 0.05;
-    }, 25);
-}
-
 
 function display_not_impl_notification() {
     UIkit.notification({

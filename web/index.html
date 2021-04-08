@@ -25,74 +25,90 @@
                 </div>
             </div>
         </nav>
-        <div id="test"></div>
+
+
+
+
+        <!-- Navigation side bar menu -->
         <div id="navmenu" uk-offcanvas>
             <div class="uk-offcanvas-bar">
                 <h1>Navigation</h1>
-                <ul class="uk-nav uk-nav-primary" uk-switcher="connect: #main-content-nav; animation: uk-animation-fade">
-                    <hr>
-                    <li><button class="uk-button uk-button-text" onclick="switch_content('content-home')"><h3>Home</h3></button></li>
-                    <hr>
-                    <li><button class="uk-button uk-button-text" onclick="switch_content('content-device-info')"><h3>Endgerätinformationen</h3></button></li>
-                    <hr>
-                    <li><button class="uk-button uk-button-text" onclick="switch_content('content-continuous-measurement')"><h3>Kontinuierliche Messung</h3></button></li>
-                    <hr>
-                    <li><button class="uk-button uk-button-text" onclick="switch_content('content-single-measurement')"><h3>Einzelne Messungen</h3></button></li>
-                    <hr>
+                <ul class="uk-nav uk-nav-primary" uk-switcher="connect: #main-content-nav; connect: .content-class; animation: uk-animation-fade">
+                    <li><a href="#">Home</a></li>
+                    <li><a href="#">Endgerätinformationen</a></li>
+                    <li><a href="#">Kontinuierliche Messung</a></li>
+                    <li><a href="#">Einzelne Messungen</a></li>
                 </ul>
             </div>
         </div>
 
-        
-
-        <div id="main-content">            
-            <div class="content" id="content-home">
+        <!-- Main content pages -->
+        <div id="main-content">
+            <div>
                 <ul id="content-breadcrumb" class="uk-breadcrumb">
-                    <li>Schneesensor</li>
-                    <li>Home</li>
+                    <ul class="uk-switcher content-class">
+                        <li>
+                            <ul id="content-breadcrumb" class="uk-breadcrumb">
+                                <li>Schneesensor</li>
+                                <li>Home</li>
+                            </ul>
+                        </li>
+                        <li>
+                            <ul id="content-breadcrumb" class="uk-breadcrumb">
+                                <li>Schneesensor</li>
+                                <li>Endgerätinformationen</li>
+                            </ul>
+                        </li>
+                        <li>
+                            <ul id="content-breadcrumb" class="uk-breadcrumb">
+                                <li>Schneesensor</li>
+                                <li>Kontinuierliche Messung</li>
+                            </ul>
+                        </li>
+                        <li>
+                            <ul id="content-breadcrumb" class="uk-breadcrumb">
+                                <li>Schneesensor</li>
+                                <li>Einzelne Messungen</li>
+                            </ul>
+                        </li>
+                    </ul>
                 </ul>
+            </div>   
 
-                <article class="uk-article">
-                    <h1 class="uk-article-title">HsKA Schneequalitätsmesssystem</h1>
-                    <p class="uk-article-meta"></p>
-                    <p>
-                        Willkommen bei der Web-App vom HsKA Schneequalitätsmesssystem. <br>
-                        Bitte drücken Sie auf den "Verbinden"-Button, der sich in der Navigationsleiste befindet, damit Sie sich mit einem kompatiblen Endgerät verbinden können. <br>
-                        Sämtliche Funktionen stehen erst nach dem Aufbau einer Verbindung zu Verfügung.
-                    </p>
-                </article>
-            </div>
+            <div>
+                <ul id="main-content-nav" class="uk-switcher content-class">
+                    <li>
+                        <article class="uk-article">
+                            <h1 class="uk-article-title">HsKA Schneequalitätsmesssystem</h1>
+                            <p class="uk-article-meta"></p>
+                            <p>
+                                Willkommen bei der Web-App vom HsKA Schneequalitätsmesssystem. <br>
+                                Bitte drücken Sie auf den "Verbinden"-Button, der sich in der Navigationsleiste befindet, damit Sie sich mit einem kompatiblen Endgerät verbinden können. <br>
+                                Sämtliche Funktionen stehen erst nach dem Aufbau einer Verbindung zu Verfügung.
+                            </p>
+                        </article>
+                    </li>
 
-            <div class="content content-start" hidden id="content-device-info">
-                <ul id="content-breadcrumb" class="uk-breadcrumb">
-                    <li>Schneesensor</li>
-                    <li>Endgerätinformationen</li>
+                    <li>
+                        Lorem ipsum bla bla not implemented yet
+                    </li>
+
+                    <li>   
+                        <div>
+                            <button id="btn-cont-toggle-continuous" class="uk-button uk-button-primary" onclick="toggle_continuous()">Live Datenaufzeichnung starten</button>
+                            <button id="btn-cont-export-csv" class="uk-button uk-button-default" onclick="display_not_impl_notification()">CSV Export</button>           
+                        </div>
+                        <div class="simple-chart-container">
+                            <div class="simple-chart"><canvas id="chart-air-temperature"></canvas></div>
+                            <div class="simple-chart"><canvas id="chart-air-pressure"></canvas></div>
+                            <div class="simple-chart"><canvas id="chart-air-humidity"></canvas></div>
+                        </div>
+                    </li>
+
+                    <li>
+                        Lorem ipsum bla bla not implemented yet
+                    </li>
                 </ul>
-                Lorem ipsum bla bla not implemented yet
-            </div>
-
-            <div class="content" hidden id="content-continuous-measurement">             
-                <ul id="content-breadcrumb" class="uk-breadcrumb">
-                    <li>Schneesensor</li>
-                    <li>Kontinuierliche Messung</li>
-                </ul>     
-                <div>
-                    <button id="btn-cont-toggle-continuous" class="uk-button uk-button-primary" onclick="toggle_continuous()">Live Datenaufzeichnung starten</button>
-                    <button id="btn-cont-export-csv" class="uk-button uk-button-default" onclick="display_not_impl_notification()">CSV Export</button>           
-                </div>
-                <div class="simple-chart-container">
-                    <div class="simple-chart"><canvas id="chart-air-temperature"></canvas></div>
-                    <div class="simple-chart"><canvas id="chart-air-pressure"></canvas></div>
-                    <div class="simple-chart"><canvas id="chart-air-humidity"></canvas></div>
-                </div>
-            </div>
-
-            <div class="content" hidden id="content-single-measurement">
-                <ul id="content-breadcrumb" class="uk-breadcrumb">
-                    <li>Schneesensor</li>
-                    <li>Einzelne Messungen</li>
-                </ul>
-                Lorem ipsum bla bla not implemented yet
             </div>
         </div>
     </body>
