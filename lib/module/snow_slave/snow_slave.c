@@ -51,7 +51,7 @@ struct snow_adxl362_device   m_adxl_dev2;
 struct snow_bme680_device    m_bme_dev;
 
 struct bme680_field_data                  m_bme_data = {0};
-struct snow_gps_position_information_raw  m_gps_pos = {0};
+struct snow_gps_position_information      m_gps_pos = {0};
 struct snow_accl_xyz_raw_t                m_accl = {0};
 
 struct bme_data_buffer                    m_bme_data_single_buffer = {0};
@@ -157,15 +157,9 @@ void snow_slave_single_measurement(uint16_t meas_interval, uint8_t meas_amount) 
     m_single_meas_interval = meas_interval;
     m_single_meas_amount = meas_amount;
 
-    for (uint8_t num_tries = 5; num_tries != 0; num_tries--) {
-        snow_gps_read_data();
-        snow_gps_get_position_raw(&m_gps_pos);
-        if (m_gps_pos.valid) 
-            break;
-    }
-
     app_timer_start(m_accl_timer_id, m_single_meas_interval, NULL);
     app_timer_start(m_bme_timer_id, m_single_meas_interval, NULL);
+    app_timer_start(m_gps_timer_id, APP_TIMER_TICKS(1000), NULL);
 }
 
 void snow_slave_ble_send_device_info() {
@@ -393,11 +387,16 @@ void test_ble() {
         // Get current gps position
         if (m_get_position) {
             snow_gps_read_data();
+            snow_gps_position_information pos;
             snow_gps_get_position(&m_gps_pos);
-            printf("Data valid: %s\nLongitude: %f°; Latitude: %f°\nTime: %02d:%02d:%02d\n\n", m_gps_pos.valid ? "yes" : "no", m_gps_pos.longitude, m_gps_pos.latitude, m_gps_pos.time.hours, m_gps_pos.time.minutes, m_gps_pos.time.seconds);
+            printf("Data valid: %s\nLongitude: %f°; Latitude: %f°\nTime: %02d:%02d:%02d\n\n", pos.valid ? "yes" : "no", pos.longitude, pos.latitude, pos.time.hours, pos.time.minutes, pos.time.seconds);
     
             m_get_position = false;
             m_new_measurements |= 4;
+
+            if (pos.valid) {
+                app_timer_stop(m_gps_timer_id);
+            }
         }
 
         // Measure the snow temperature
@@ -452,12 +451,6 @@ void test_ble() {
 
                             m_single_meas_done++;
 
-                            // If there is still no valid gps data available attempt to fetch it
-                            if (!m_gps_pos.valid) {
-                                snow_gps_read_data();
-                                snow_gps_get_position_raw(&m_gps_pos);
-                            }                           
-                          
                             if (m_single_meas_done == m_single_meas_amount) {
                                 // Maxmimum amount of measurement samples reached
                                 // Calculate average here
@@ -514,6 +507,7 @@ void test_ble() {
                         app_timer_stop(m_bme_timer_id);
                         m_singlemeas_state = SNOW_SLAVE_SINGLEMEAS_IDLE;
                         m_main_state = SNOW_SLAVE_MAIN_IDLE;
+                        m_gps_pos.valid = false;
 
                         memset(m_ble_tx_buf, 0, SNOW_SLAVE_BLE_BUFFER_SIZE);
 
