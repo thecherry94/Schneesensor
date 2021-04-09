@@ -9,7 +9,7 @@
         <script src="js/uikit-icons.min.js"></script>
         <script src="js/chart.min.js"></script>
         <script src="js/ble.js"></script>
-        
+        <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBIwzALxUPNbatRBj3Xi1Uhp0fFzwWNBkE&callback=initMap&libraries=&v=weekly" async></script>
     </head>
 
     <body onload="on_load()">
@@ -111,8 +111,28 @@
                         </div>
                     </li>
 
-                    <li>
-                        <p>Aktuelle Messreihe: <span id="txt_current_meas_series_name"></p>      
+                    <li>                   
+                        <table class="uk-table uk-table-small uk-table-justify">
+                            <thead>
+                                <tr>
+                                    <th class="uk-width-small" rowspan="3">Aktuelle Messung</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Dateiname</td>
+                                    <td id="ui_txt_current_meas_series_name">-</td>
+                                </tr>
+                                <tr>
+                                    <td>Erstellt</td>
+                                    <td id="ui_txt_current_meas_series_date_created">-</td>
+                                </tr>
+                                <tr>
+                                    <td>Zuletzt modifiziert</td>
+                                    <td id="ui_txt_current_meas_series_date_modified">-</td>
+                                </tr>
+                            </tbody>
+                        </table> 
                         <div>               
                             <button id="ui_btn_new_meas_series" class="uk-button uk-button-primary" onclick="ui_btn_new_meas_series_clicked()">Neue Messreihe anlegen</button>
                             <button class="uk-button uk-button-default">Messreihe exportieren (CSV)</button>
@@ -159,9 +179,12 @@
                                     </table>
                                 </li>
 
-                                <li>
+                                <li id="ui_tab_maps">
                                     Ansicht der einzelnen Messwerte mit Markierung auf Google-Maps <br>
                                     Dieses Feature steht nur zur Verfügung, wenn eine Internetverbindung vorhanden ist
+                                    <div>
+                                        <div id="ui_map" style="width:80%; height:80%;"></div>
+                                    </div>
                                 </li>
                             </ul>
                         </div>  

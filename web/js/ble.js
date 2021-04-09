@@ -31,6 +31,8 @@ var m_chart_air_humidity;
 
 var m_current_meas_series = null;
 
+var m_map;
+
 
 function toggle_connection() {
     var btn_cont = document.getElementById("btn-cont-toggle-continuous");
@@ -212,9 +214,9 @@ function on_data_package_received(data, len) {
         chart_add_data(m_chart_air_pressure, label, pressure);
         chart_add_data(m_chart_air_humidity, label, humidity);
     } else if (cmd == atoh('m')) {
-        var air_temp = data.getInt16(1, 3, true);
-        var air_pres = data.getUint32(3, 7, true);
-        var air_humi = data.getUint32(7, 11, true);
+        var air_temp = data.getInt16(1, 3, true) / 100.0;
+        var air_pres = data.getUint32(3, 7, true) / 100.0;
+        var air_humi = data.getUint32(7, 11, true) / 1000.0;
 
         var snow_temp = data.getInt16(11, 13, true);
         var snow_hard = data.getInt16(13, 15, true);
@@ -297,7 +299,9 @@ function ui_btn_new_meas_series_clicked() {
 
         m_current_meas_series = create_new_measurement_series(name);
         m_current_meas_series.dataChangedEventHandler = current_measurement_series_updated_event_handler;
-        document.getElementById("txt_current_meas_series_name").innerHTML = name;
+        document.getElementById("ui_txt_current_meas_series_name").innerHTML = name;
+        document.getElementById("ui_txt_current_meas_series_date_created").innerHTML = m_current_meas_series.dateCreated;
+        document.getElementById("ui_txt_current_meas_series_date_modified").innerHTML = m_current_meas_series.dateModified;
 
         var btn = document.getElementById("ui_btn_new_meas_series");
         btn.innerHTML = "Messreihe speichern und schließen";
@@ -342,7 +346,9 @@ function ui_btn_close_meas_series_clicked() {
     // Reset
     var btn = document.getElementById("ui_btn_new_meas_series");
     btn.innerHTML = "Neue Messreihe anlegen";
-    document.getElementById("txt_current_meas_series_name").innerHTML = "Keine";
+    document.getElementById("ui_txt_current_meas_series_name").innerHTML = "-";
+    document.getElementById("ui_txt_current_meas_series_date_created").innerHTML = "-";
+        document.getElementById("ui_txt_current_meas_series_date_modified").innerHTML = "-";
     btn.onclick = ui_btn_new_meas_series_clicked;
 
     document.getElementById("ui_btn_take_single_measurement").disabled = true;
@@ -416,6 +422,17 @@ function ui_set_conn_state(state) {
 }
 
 
+function initMap() {
+    maps_tab = document.getElementById("ui_tab_maps");
+    maps_tab.addEventListener("beforeshow", function() {
+        const hska = { lat: 49.025778933333335, lng: 8.624536266666667 };
+        m_map = new google.maps.Map(document.getElementById("ui_map"), {
+            zoom: 16,
+            center: hska
+        });
+    });
+}
+
 function on_load() {
     m_active_content_id = "content-home";
 
@@ -426,6 +443,8 @@ function on_load() {
     m_chart_air_temperature = create_simple_line_chart(m_ctx_air_temperature, "Lufttemperatur [degC]", 'rgb(255, 0, 0)');
     m_chart_air_pressure = create_simple_line_chart(m_ctx_air_pressure, "Luftdruck [hPa]", 'rgb(0, 255, 0)');
     m_chart_air_humidity = create_simple_line_chart(m_ctx_air_humidity, "Luftfeuchtigkeit [%rH]", 'rgb(0, 0, 255)');
+
+    initMap();
 
     /*
     m_chart = new Chart(m_ctx, {
