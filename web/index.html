@@ -113,13 +113,13 @@
 
                     <li>
                         <p>Aktuelle Messreihe: <span id="txt_current_meas_series_name"></p>      
-                        <form>               
+                        <div>               
                             <button id="ui_btn_new_meas_series" class="uk-button uk-button-primary" onclick="ui_btn_new_meas_series_clicked()">Neue Messreihe anlegen</button>
                             <button class="uk-button uk-button-default">Messreihe exportieren (CSV)</button>
                             <button class="uk-button uk-button-danger">Messreihe löschen</button>
-                        </form>
+                        </div>
                         <br>
-                        <form id="ui_form_single_measurement" class="uk-form-stacked uk-grid-small uk-grid-match" uk-grid> 
+                        <div id="ui_form_single_measurement" class="uk-form-stacked uk-grid-small uk-grid-match" uk-grid> 
                             <div class="uk-width-1-6@s">
                                 <button id="ui_btn_take_single_measurement" class="uk-button uk-button-primary" onclick="ui_btn_take_single_meas_clicked()" disabled>Messung starten</button>
                             </div>
@@ -131,7 +131,7 @@
                                 <label class="uk-form-label">Anzahl</label>
                                 <input id="ui_inp_single_measurement_amount" type="text" class="uk-input uk-form-width-xsmall uk-form-small" disabled>
                             </div>
-                        </form>
+                        </div>
                         <div>
                             <ul uk-tab>
                                 <li><a href="#">Tabelle</a></li>

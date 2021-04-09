@@ -370,15 +370,16 @@ function current_measurement_series_updated_event_handler(ev) {
         var cell_longitude = row.insertCell(7);
         var cell_valid = row.insertCell(8);
 
-        cell_air_temp.innerHTML = m_current_meas_series.data[0];
-        cell_air_pres.innerHTML = m_current_meas_series.data[1];
-        cell_air_humi.innerHTML = m_current_meas_series.data[2];
-        cell_snow_temp.innerHTML = m_current_meas_series.data[3];
-        cell_snow_hard.innerHTML = m_current_meas_series.data[4];
-        cell_snow_mois.innerHTML = m_current_meas_series.data[5];
-        cell_latitude.innerHTML = m_current_meas_series.data[6];
-        cell_longitude.innerHTML = m_current_meas_series.data[7];
-        cell_valid.innerHTML = m_current_meas_series.data[8];
+        var idx = m_current_meas_series.data.length - 1;
+        cell_air_temp.innerHTML = m_current_meas_series.data[idx][0];
+        cell_air_pres.innerHTML = m_current_meas_series.data[idx][1];
+        cell_air_humi.innerHTML = m_current_meas_series.data[idx][2];
+        cell_snow_temp.innerHTML = m_current_meas_series.data[idx][3];
+        cell_snow_hard.innerHTML = m_current_meas_series.data[idx][4];
+        cell_snow_mois.innerHTML = m_current_meas_series.data[idx][5];
+        cell_latitude.innerHTML = m_current_meas_series.data[idx][6];
+        cell_longitude.innerHTML = m_current_meas_series.data[idx][7];
+        cell_valid.innerHTML = m_current_meas_series.data[idx][8];
     }
 }
 
