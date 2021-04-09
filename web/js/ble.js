@@ -29,6 +29,9 @@ var m_chart_air_pressure;
 var m_chart_air_humidity;
 
 
+var m_current_meas_series = null;
+
+
 function toggle_connection() {
     var btn_cont = document.getElementById("btn-cont-toggle-continuous");
     btn_cont.innerHTML = "Live Datenaufzeichnung starten";
@@ -209,9 +212,45 @@ function on_data_package_received(data, len) {
         chart_add_data(m_chart_air_pressure, label, pressure);
         chart_add_data(m_chart_air_humidity, label, humidity);
     } else if (cmd == atoh('m')) {
-        console.log("m");
+        var air_temp = data.getInt16(1, 3, true);
+        var air_pres = data.getUint32(3, 7, true);
+        var air_humi = data.getUint32(7, 11, true);
+
+        var snow_temp = data.getInt16(11, 13, true);
+        var snow_hard = data.getInt16(13, 15, true);
+        var snow_mois = data.getInt16(15, 17, true);
+
+        var raw_gps = {
+            latitude: {
+                value: data.getUint32(17, 21, true),
+                scale: data.getUint32(21, 25, true)
+            },
+            longitude: {
+                value: data.getUint32(25, 29, true),
+                scale: data.getUint32(29, 33, true)
+            },
+            valid: data.getUint8(33, 34, true) == 1
+        }
+
+        var gps_pos = raw_gps_pos_to_coord(raw_gps);
+
+        if (m_current_meas_series != null) {
+            var row = [
+                air_temp,
+                air_pres,
+                air_humi,
+                snow_temp,
+                snow_hard,
+                snow_mois,
+                gps_pos.latitude,
+                gps_pos.longitude,
+                gps_pos.valid
+            ];
+            add_row_to_measurment_series(m_current_meas_series, row);
+        }
     }
 }
+
 
 
 function atoh(str) {
@@ -237,6 +276,113 @@ function toggle_continuous() {
 
     document.getElementById("toggle-continuous").innerHTML = "Live Datenaufzeichnung " + (m_continuous ? "stoppen" : "starten");
 }
+
+
+function ui_btn_new_meas_series_clicked() {
+    if (m_current_meas_series == null) {
+        var name = prompt("Bitte geben Sie einen Namen für die neue Messreihe ein.");
+        if (name == null)
+            return;
+        
+        if (name.length < 3) {
+            UIkit.notification({
+                message: "Der Dateiname einer Messreihe muss mindestens 3 Zeichen beinhalten!",
+                status: "danger",
+                pos: "top-center",
+                timeout: 3000
+            });
+        }
+
+        // Add check if filename already exists in IndexedDB
+
+        m_current_meas_series = create_new_measurement_series(name);
+        m_current_meas_series.dataChangedEventHandler = current_measurement_series_updated_event_handler;
+        document.getElementById("txt_current_meas_series_name").innerHTML = name;
+
+        var btn = document.getElementById("ui_btn_new_meas_series");
+        btn.innerHTML = "Messreihe speichern und schließen";
+        btn.onclick = ui_btn_close_meas_series_clicked;
+
+        document.getElementById("ui_btn_take_single_measurement").disabled = false;
+        document.getElementById("ui_inp_single_measurement_interval").disabled = false;
+        document.getElementById("ui_inp_single_measurement_amount").disabled = false;
+
+    } else {
+        // Another measurement series is still open
+        UIkit.notification({
+            message: "Es ist bereits eine Messreihe geöffnet!",
+            status: "danger",
+            pos: "top-center",
+            timeout: 5000
+        });
+    }
+}
+
+
+function ui_btn_close_meas_series_clicked() {
+    if (!confirm("Möchten Sie die Messreihe wirklich speichern und schließen?"))
+        return;
+    
+    UIkit.notification({
+        message: "Das Speichern einer Messreihe ist noch nicht möglich!",
+        status: "danger",
+        pos: "top-center",
+        timeout: 5000
+    });
+
+    if (!confirm("Das Speichern einer Messreihe ist noch nicht möglich!\nTrotzdem schließen (=löschen)?"))
+        return;
+    
+    // TODO Save measurement series if requested
+
+    // Clear everything
+    m_current_meas_series = null;
+    document.getElementById("tbl_current_meas_series").getElementsByTagName("tbody")[0].innerHTML = "";
+
+    // Reset
+    var btn = document.getElementById("ui_btn_new_meas_series");
+    btn.innerHTML = "Neue Messreihe anlegen";
+    document.getElementById("txt_current_meas_series_name").innerHTML = "Keine";
+    btn.onclick = ui_btn_new_meas_series_clicked;
+
+    document.getElementById("ui_btn_take_single_measurement").disabled = true;
+        document.getElementById("ui_inp_single_measurement_interval").disabled = true;
+        document.getElementById("ui_inp_single_measurement_amount").disabled = true;
+}
+
+function ui_btn_take_single_meas_clicked() {
+    var cmd = "m }!;\r\n";
+
+    nus_send_str(cmd);
+}
+
+function current_measurement_series_updated_event_handler(ev) {
+    if (ev.type == "added") {
+        var table = document.getElementById("tbl_current_meas_series");
+        var row = table.insertRow(-1);
+        var cell_air_temp = row.insertCell(0);
+        var cell_air_pres = row.insertCell(1);
+        var cell_air_humi = row.insertCell(2);
+        var cell_snow_temp = row.insertCell(3);
+        var cell_snow_hard = row.insertCell(4);
+        var cell_snow_mois = row.insertCell(5);
+        var cell_latitude = row.insertCell(6);
+        var cell_longitude = row.insertCell(7);
+        var cell_valid = row.insertCell(8);
+
+        cell_air_temp.innerHTML = m_current_meas_series.data[0];
+        cell_air_pres.innerHTML = m_current_meas_series.data[1];
+        cell_air_humi.innerHTML = m_current_meas_series.data[2];
+        cell_snow_temp.innerHTML = m_current_meas_series.data[3];
+        cell_snow_hard.innerHTML = m_current_meas_series.data[4];
+        cell_snow_mois.innerHTML = m_current_meas_series.data[5];
+        cell_latitude.innerHTML = m_current_meas_series.data[6];
+        cell_longitude.innerHTML = m_current_meas_series.data[7];
+        cell_valid.innerHTML = m_current_meas_series.data[8];
+    }
+}
+
+
 
 
 function ui_set_conn_state(state) {
@@ -327,6 +473,42 @@ function on_load() {
     */
 }
 
+function create_new_measurement_series(_name) {
+    if (_name.length < 3) 
+        return;
+
+    var series = {
+        name: _name,
+        dateCreated: new Date(),
+        dateModified: new Date(),
+        labels: [
+            "Lufttemperatur [degC]", "Luftdruck [hPa]", "Luftfeuchtigkeit [%rH]",
+            "Schneetemperatur [degC]", "Schneehärte [?]", "Schneefeuchtigkeit [?]",
+            "Latitude", "Longitude", "Valid"
+        ],
+        data: [],
+        dataChangedEventHandler: function(ev) {}
+    };
+
+    return series;
+}
+
+function add_row_to_measurment_series(series, row) {
+    if (!Array.isArray(row))
+        return;
+
+    if (series.labels.length != row.length)
+        return;
+    
+    series.dateModified = new Date();
+    series.data.push(row);
+
+    var ev = {
+        type: 'added'
+    };
+    series.dataChangedEventHandler(ev);
+}
+
 function create_simple_line_chart(_ctx, _label, _line_color) {
     var chart = new Chart(_ctx, {
         type: 'line',
@@ -378,4 +560,22 @@ function display_not_impl_notification() {
         pos: "top-center",
         timeout: 5000
     });
+}
+
+
+function raw_gps_pos_to_coord(raw) {
+    return {
+        latitude: raw_gps_parse_value(raw.latitude),
+        longitude: raw_gps_parse_value(raw.longitude),
+        valid: raw.valid
+    };
+}
+
+function raw_gps_parse_value(raw) {
+    if (raw.scale == 0)
+        return NaN;
+    
+    var degrees = raw.value / (raw.scale * 100);
+    var minutes = raw.value % (raw.scale * 100);
+    return degrees + minutes / (60.0 * raw.scale);
 }

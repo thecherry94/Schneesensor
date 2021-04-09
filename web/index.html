@@ -112,12 +112,26 @@
                     </li>
 
                     <li>
-                        <p>Aktuelle Messreihe: Keine</p>      
-                        <div>               
-                            <button class="uk-button uk-button-primary">Neue Messreihe anlegen</button>
+                        <p>Aktuelle Messreihe: <span id="txt_current_meas_series_name"></p>      
+                        <form>               
+                            <button id="ui_btn_new_meas_series" class="uk-button uk-button-primary" onclick="ui_btn_new_meas_series_clicked()">Neue Messreihe anlegen</button>
                             <button class="uk-button uk-button-default">Messreihe exportieren (CSV)</button>
                             <button class="uk-button uk-button-danger">Messreihe löschen</button>
-                        </div>
+                        </form>
+                        <br>
+                        <form id="ui_form_single_measurement" class="uk-form-stacked uk-grid-small uk-grid-match" uk-grid> 
+                            <div class="uk-width-1-6@s">
+                                <button id="ui_btn_take_single_measurement" class="uk-button uk-button-primary" onclick="ui_btn_take_single_meas_clicked()" disabled>Messung starten</button>
+                            </div>
+                            <div class="uk-width-1-6@s">
+                                <label class="uk-form-label">Interval</label>
+                                <input id="ui_inp_single_measurement_interval" type="text" class="uk-input uk-form-width-xsmall uk-form-small" disabled>
+                            </div>
+                            <div class="uk-width-1-6@s">
+                                <label class="uk-form-label">Anzahl</label>
+                                <input id="ui_inp_single_measurement_amount" type="text" class="uk-input uk-form-width-xsmall uk-form-small" disabled>
+                            </div>
+                        </form>
                         <div>
                             <ul uk-tab>
                                 <li><a href="#">Tabelle</a></li>
@@ -127,6 +141,22 @@
                             <ul class="uk-switcher">
                                 <li>
                                     Tabellarische Ansicht der einzelnen Messwerte
+                                    <table id="tbl_current_meas_series" class="uk-table uk-table-striped">
+                                        <thead>
+                                            <th>Lufttemperatur [degC]</th>
+                                            <th>Luftdruck [hPa]</th>
+                                            <th>Luftfeuchtigkeit [%rH]</th>
+                                            <th>Schneetemperatur [degC]</th>
+                                            <th>Schneehärte [?]</th>
+                                            <th>Schneefeuchtigkeit [?]</th>
+                                            <th>Latitude</th>
+                                            <th>Longitude</th>
+                                            <th>Position akkurat</th>
+                                        </thead>
+                                        <tbody>
+
+                                        </tbody>
+                                    </table>
                                 </li>
 
                                 <li>
