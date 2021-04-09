@@ -387,14 +387,13 @@ void test_ble() {
         // Get current gps position
         if (m_get_position) {
             snow_gps_read_data();
-            snow_gps_position_information pos;
             snow_gps_get_position(&m_gps_pos);
-            printf("Data valid: %s\nLongitude: %f°; Latitude: %f°\nTime: %02d:%02d:%02d\n\n", pos.valid ? "yes" : "no", pos.longitude, pos.latitude, pos.time.hours, pos.time.minutes, pos.time.seconds);
+            printf("Data valid: %s\nLongitude: %f°; Latitude: %f°\nTime: %02d:%02d:%02d\n\n", m_gps_pos.valid ? "yes" : "no", m_gps_pos.longitude, m_gps_pos.latitude, m_gps_pos.time.hours, m_gps_pos.time.minutes, m_gps_pos.time.seconds);
     
             m_get_position = false;
             m_new_measurements |= 4;
 
-            if (pos.valid) {
+            if (m_gps_pos.valid) {
                 app_timer_stop(m_gps_timer_id);
             }
         }
@@ -506,8 +505,7 @@ void test_ble() {
                     case SNOW_SLAVE_SINGLE_MEAS_DONE: {
                         app_timer_stop(m_bme_timer_id);
                         m_singlemeas_state = SNOW_SLAVE_SINGLEMEAS_IDLE;
-                        m_main_state = SNOW_SLAVE_MAIN_IDLE;
-                        m_gps_pos.valid = false;
+                        m_main_state = SNOW_SLAVE_MAIN_IDLE;                      
 
                         memset(m_ble_tx_buf, 0, SNOW_SLAVE_BLE_BUFFER_SIZE);
 
@@ -543,35 +541,29 @@ void test_ble() {
                         
                         // GPS data
                         //
-                        m_ble_tx_buf[17] = (uint8_t)(m_gps_pos.latitude.value);
-                        m_ble_tx_buf[18] = (uint8_t)(m_gps_pos.latitude.value >> 8);
-                        m_ble_tx_buf[19] = (uint8_t)(m_gps_pos.latitude.value >> 16);
-                        m_ble_tx_buf[20] = (uint8_t)(m_gps_pos.latitude.value >> 24);
+                        uint32_t latitude = *(uint32_t*)(&m_gps_pos.latitude);
+                        uint32_t longitude = *(uint32_t*)(&m_gps_pos.longitude);
 
-                        m_ble_tx_buf[21] = (uint8_t)(m_gps_pos.latitude.scale);
-                        m_ble_tx_buf[22] = (uint8_t)(m_gps_pos.latitude.scale >> 8);
-                        m_ble_tx_buf[23] = (uint8_t)(m_gps_pos.latitude.scale >> 16);
-                        m_ble_tx_buf[24] = (uint8_t)(m_gps_pos.latitude.scale >> 24);
+                        m_ble_tx_buf[17] = latitude;
+                        m_ble_tx_buf[18] = latitude >> 8;
+                        m_ble_tx_buf[19] = latitude >> 16;
+                        m_ble_tx_buf[20] = latitude >> 24;
 
-                        m_ble_tx_buf[25] = (uint8_t)(m_gps_pos.longitude.value);
-                        m_ble_tx_buf[26] = (uint8_t)(m_gps_pos.longitude.value >> 8);
-                        m_ble_tx_buf[27] = (uint8_t)(m_gps_pos.longitude.value >> 16);
-                        m_ble_tx_buf[28] = (uint8_t)(m_gps_pos.longitude.value >> 24);
+                        m_ble_tx_buf[21] = longitude;
+                        m_ble_tx_buf[22] = longitude >> 8;
+                        m_ble_tx_buf[23] = longitude >> 16;
+                        m_ble_tx_buf[24] = longitude >> 24;
 
-                        m_ble_tx_buf[29] = (uint8_t)(m_gps_pos.longitude.scale);
-                        m_ble_tx_buf[30] = (uint8_t)(m_gps_pos.longitude.scale >> 8);
-                        m_ble_tx_buf[31] = (uint8_t)(m_gps_pos.longitude.scale >> 16);
-                        m_ble_tx_buf[32] = (uint8_t)(m_gps_pos.longitude.scale >> 24);
-
-                        m_ble_tx_buf[33] = (uint8_t)(m_gps_pos.valid);
+                        m_ble_tx_buf[25] = (uint8_t)(m_gps_pos.valid);
+                        m_gps_pos.valid = false;
 
 
-                        m_ble_tx_buf[34] = ';';
-                        m_ble_tx_buf[35] = '\r';
-                        m_ble_tx_buf[36] = '\n';
+                        m_ble_tx_buf[26] = ';';
+                        m_ble_tx_buf[27] = '\r';
+                        m_ble_tx_buf[28] = '\n';
 
 
-                        snow_ble_data_send(m_ble_tx_buf, 37);
+                        snow_ble_data_send(m_ble_tx_buf, 29);
                     } break;
                 }
             } break;

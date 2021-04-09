@@ -222,19 +222,13 @@ function on_data_package_received(data, len) {
         var snow_hard = data.getInt16(13, 15, true);
         var snow_mois = data.getInt16(15, 17, true);
 
-        var raw_gps = {
-            latitude: {
-                value: data.getUint32(17, 21, true),
-                scale: data.getUint32(21, 25, true)
-            },
-            longitude: {
-                value: data.getUint32(25, 29, true),
-                scale: data.getUint32(29, 33, true)
-            },
-            valid: data.getUint8(33, 34, true) == 1
-        }
+        var dv = new DataView(data.buffer);
 
-        var gps_pos = raw_gps_pos_to_coord(raw_gps);
+        var gps_pos = {
+            latitude: dv.getFloat32(17, true),
+            longitude: dv.getFloat32(21, true),
+            valid: data.getUint8(25) == 1
+        };
 
         if (m_current_meas_series != null) {
             var row = [
