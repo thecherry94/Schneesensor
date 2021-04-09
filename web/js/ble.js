@@ -120,7 +120,9 @@ function disconnect() {
 
 
 function on_disconnected() {
-
+    m_connected = false;
+    m_continuous = false;
+    ui_set_conn_state(false);
 }
 
 
