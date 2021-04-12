@@ -270,7 +270,7 @@ function toggle_continuous() {
         m_continuous = !m_continuous;
     }
 
-    document.getElementById("toggle-continuous").innerHTML = "Live Datenaufzeichnung " + (m_continuous ? "stoppen" : "starten");
+    document.getElementById("btn-cont-toggle-continuous").innerHTML = "Live Datenaufzeichnung " + (m_continuous ? "stoppen" : "starten");
 }
 
 
@@ -420,7 +420,7 @@ function initMap() {
     maps_tab = document.getElementById("ui_tab_maps");
     maps_tab.addEventListener("beforeshow", function() {
         m_map = new google.maps.Map(document.getElementById("ui_map"), {
-            zoom: 8,
+            zoom: 16,
         });
 
         if (m_current_meas_series != null) {
