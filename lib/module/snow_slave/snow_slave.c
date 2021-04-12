@@ -232,7 +232,8 @@ void snow_slave_toggle_continuous_measurement(uint16_t interval) {
         app_timer_start(m_gps_timer_id, GPS_TIMER_INTERVAL, NULL);
         app_timer_start(m_bme_timer_id, BME_TIMER_INTERVAL, NULL);
         app_timer_start(m_accl_timer_id, ACCL_TIMER_INTERVAL, NULL);
-        app_timer_start(m_cont_timer_id, interval == 0 && interval <= 5000 ? CONT_TIMER_INTERVAL : interval, NULL);
+        //app_timer_start(m_cont_timer_id, interval == 0 && interval <= 5000 ? APP_TIMER_TICKS(CONT_TIMER_INTERVAL) : APP_TIMER_TICKS(interval), NULL);
+        app_timer_start(m_cont_timer_id, CONT_TIMER_INTERVAL, NULL);
     } else {
         app_timer_stop(m_gps_timer_id);
         app_timer_stop(m_bme_timer_id);
@@ -562,8 +563,9 @@ void test_ble() {
                         m_ble_tx_buf[27] = '\r';
                         m_ble_tx_buf[28] = '\n';
 
-
-                        snow_ble_data_send(m_ble_tx_buf, 29);
+                        if (ble_send_ready()) {
+                            snow_ble_data_send(m_ble_tx_buf, 29);
+                        }
                     } break;
                 }
             } break;

@@ -192,13 +192,14 @@ uint32_t snow_ble_data_send(uint8_t* data, uint16_t len) {
     if (data[len-1] != '\n' && data[len-2] != '\r')
         return NRF_ERROR_INVALID_DATA;
     
-    uint16_t max_len = BLE_NUS_MAX_DATA_LEN;
+    uint16_t max_len = 0;
     uint8_t current_pos = 0;
 
     // Notify main module that a transmission is about to start
     snow_slave_ble_on_tx_start();
 
     while (len - current_pos - max_len != 0) {
+        max_len = BLE_NUS_MAX_DATA_LEN;
         // If the remaining length is smaller than a data chunk
         if (len - current_pos < BLE_NUS_MAX_DATA_LEN) 
             // set the chunk length for the final one accordingly
