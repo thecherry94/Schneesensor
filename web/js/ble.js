@@ -34,13 +34,71 @@ var m_current_meas_series = null;
 var m_map;
 
 
+function ui_update_state(state) {
+    var txt_con_status = document.getElementById("nb-txt-con-status");
+    var btn_con = document.getElementById("nb-btn-toggle-connection");
+
+    switch (state) {
+        case 'connected': {
+            txt_con_status.innerHTML = "Verbunden";
+            txt_con_status.style.color = "rgb(34,139,34)";
+
+            btn_con.innerHTML = "Verbindung trennen";
+            btn_con.classList.remove("uk-button-primary");
+            btn_con.classList.add("uk-button-danger");
+
+            Array.prototype.forEach.call(document.querySelectorAll(".ui-content :not(.ui-connection-independent) *"), content => {
+                content.disabled = false;
+            });
+        } break;
+
+        case 'connecting': {
+            txt_con_status.innerHTML = "Verbinden...";
+            txt_con_status.style.color = "rgb(204,204,0)";
+
+            btn_con.innerHTML = "Verbinden...";
+            btn_con.classList.remove("uk-button-danger");
+            btn_con.classList.add("uk-button-primary"); 
+        } break;
+
+        case 'disconnected': {
+            txt_con_status.innerHTML = "Nicht verbunden";
+            txt_con_status.style.color = "rgb(255, 0, 0)";
+
+            btn_con.innerHTML = "Verbinden";
+            btn_con.classList.remove("uk-button-danger");
+            btn_con.classList.add("uk-button-primary");
+            
+            Array.prototype.forEach.call(document.querySelectorAll(".ui-content :not(.ui-connection-independent) *"), content => {
+                content.disabled = true;
+            });
+        } break;
+
+        case 'continuous-measurement-stated': {
+
+        } break;
+
+        case 'continuous-measurement-stopped': {
+
+        } break;
+
+        case 'single-measurement-started': {
+
+        } break;
+
+        case 'single-measurement-stopped': {
+
+        } break;
+    }
+}
+
+
 function toggle_connection() {
     var btn_cont = document.getElementById("btn-cont-toggle-continuous");
     btn_cont.innerHTML = "Live Datenaufzeichnung starten";
 
     if (m_connected) {
-        disconnect();
-        
+        disconnect();        
     } else {        
         connect();
     }   
@@ -60,7 +118,7 @@ function connect() {
         acceptAllDevices: true
     })
     .then(device => {
-        ui_set_conn_state(2);
+        ui_update_state('connecting');
         m_ble_device = device;
         console.log("Found: " + device.name);
         console.log("Connecting to GATT Server...");
@@ -99,7 +157,7 @@ function connect() {
         console.log("Notifications started");
         m_tx_char.addEventListener('characteristicvaluechanged', handle_notifications);
         m_connected = true;
-        ui_set_conn_state(m_connected);
+        ui_update_state(m_connected ? 'connected' : 'disconnected');
     })
 
     return m_connected;
@@ -120,14 +178,14 @@ function disconnect() {
     } else {
         console.log('> Bluetooth Device is already disconnected');
     }
-    ui_set_conn_state(m_connected);
+    ui_update_state(m_connected ? 'connected' : 'disconnected');
 }
 
 
 function on_disconnected() {
     m_connected = false;
     m_continuous = false;
-    ui_set_conn_state(false);
+    ui_update_state('disconnected');
 }
 
 
@@ -385,37 +443,6 @@ function current_measurement_series_updated_event_handler(ev) {
 
 
 
-
-function ui_set_conn_state(state) {
-    var txt_con_status = document.getElementById("nb-txt-con-status");
-    var btn_con = document.getElementById("nb-btn-toggle-connection");
-
-    if (state == 2) {
-        txt_con_status.innerHTML = "Verbinden...";
-        txt_con_status.style.color = "rgb(204,204,0)";
-
-        btn_con.innerHTML = "Verbinden...";
-        btn_con.classList.remove("uk-button-danger");
-        btn_con.classList.add("uk-button-primary"); 
-    }
-    else if (state) {
-        txt_con_status.innerHTML = "Verbunden";
-        txt_con_status.style.color = "rgb(34,139,34)";
-
-        btn_con.innerHTML = "Verbindung trennen";
-        btn_con.classList.remove("uk-button-primary");
-        btn_con.classList.add("uk-button-danger");
-    } else {
-        txt_con_status.innerHTML = "Nicht verbunden";
-        txt_con_status.style.color = "rgb(255, 0, 0)";
-
-        btn_con.innerHTML = "Verbinden";
-        btn_con.classList.remove("uk-button-danger");
-        btn_con.classList.add("uk-button-primary");      
-    }
-}
-
-
 function initMap() {
     maps_tab = document.getElementById("ui_tab_maps");
     maps_tab.addEventListener("beforeshow", function() {
@@ -462,6 +489,10 @@ function on_load() {
     m_chart_air_humidity = create_simple_line_chart(m_ctx_air_humidity, "Luftfeuchtigkeit [%rH]", 'rgb(0, 0, 255)');
 
     initMap();
+
+    Array.prototype.forEach.call(document.querySelectorAll(".ui-content :not(.ui-connection-independent) *"), content => {
+        content.disabled = true;
+    });
 
     /*
     m_chart = new Chart(m_ctx, {

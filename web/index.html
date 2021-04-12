@@ -70,7 +70,7 @@
 
             <div>
                 <ul id="main-content-nav" class="uk-switcher content-class">
-                    <li>
+                    <li class="ui-content-main">
                         <ul uk-tab>
                             <li><a href="#">Startseite</a></li>
                             <li><a href="#">Endgerätinformationen</a></li>
@@ -99,7 +99,7 @@
                         </ul>                
                     </li>
 
-                    <li>   
+                    <li class="ui-content">   
                         <div>
                             <button id="btn-cont-toggle-continuous" class="uk-button uk-button-primary" onclick="toggle_continuous()">Live Datenaufzeichnung starten</button>
                             <button id="btn-cont-export-csv" class="uk-button uk-button-default" onclick="display_not_impl_notification()">CSV Export</button>           
@@ -111,7 +111,7 @@
                         </div>
                     </li>
 
-                    <li>                   
+                    <li class="ui-content">                   
                         <table class="uk-table uk-table-small uk-table-justify">
                             <thead>
                                 <tr>
@@ -133,7 +133,7 @@
                                 </tr>
                             </tbody>
                         </table> 
-                        <div>               
+                        <div class="ui-connection-independent">               
                             <button id="ui_btn_new_meas_series" class="uk-button uk-button-primary" onclick="ui_btn_new_meas_series_clicked()">Neue Messreihe anlegen</button>
                             <button class="uk-button uk-button-default">Messreihe exportieren (CSV)</button>
                             <button class="uk-button uk-button-danger">Messreihe löschen</button>
