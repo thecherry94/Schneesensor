@@ -419,11 +419,34 @@ function ui_set_conn_state(state) {
 function initMap() {
     maps_tab = document.getElementById("ui_tab_maps");
     maps_tab.addEventListener("beforeshow", function() {
-        const hska = { lat: 49.025778933333335, lng: 8.624536266666667 };
         m_map = new google.maps.Map(document.getElementById("ui_map"), {
-            zoom: 16,
-            center: hska
+            zoom: 8,
         });
+
+        if (m_current_meas_series != null) {
+            var avg = { lat: 0, lng: 0 };
+            const len = m_current_meas_series.data.length;
+            for (var i = 0; i < len; i++) {
+                const latitude = m_current_meas_series.data[i][6];
+                const longitude = m_current_meas_series.data[i][7];
+                const marker = new google.maps.Marker({
+                    position: {
+                        lat: latitude,
+                        lng: longitude
+                    },
+                    map: m_map
+                });
+                avg.lat += latitude;
+                avg.lng += longitude
+            }
+            avg.lat /= len;
+            avg.lng /= len;
+
+            m_map.setCenter({
+                lat: avg.lat,
+                lng: avg.lng
+            });
+        }
     });
 }
 
