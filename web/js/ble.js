@@ -34,11 +34,15 @@ var m_current_meas_series = null;
 var m_map;
 
 
-function ui_update_state(state) {
+function ui_update_state(state, context) {
     var txt_con_status = document.getElementById("nb-txt-con-status");
     var btn_con = document.getElementById("nb-btn-toggle-connection");
 
     switch (state) {
+        case 'reset': {
+
+        } break;
+
         case 'connected': {
             txt_con_status.innerHTML = "Verbunden";
             txt_con_status.style.color = "rgb(34,139,34)";
@@ -47,6 +51,7 @@ function ui_update_state(state) {
             btn_con.classList.remove("uk-button-primary");
             btn_con.classList.add("uk-button-danger");
 
+            // Select all tags inside tags with the class .ui-content except for tags with the class .ui-connection-independent
             Array.prototype.forEach.call(document.querySelectorAll(".ui-content :not(.ui-connection-independent) *"), content => {
                 content.disabled = false;
             });
@@ -88,6 +93,38 @@ function ui_update_state(state) {
 
         case 'single-measurement-stopped': {
 
+        } break;
+
+        case 'measurement-series-created': {
+            document.getElementById("ui_txt_current_meas_series_name").innerHTML = context.name;
+            document.getElementById("ui_txt_current_meas_series_date_created").innerHTML = context.dateCreated;
+            document.getElementById("ui_txt_current_meas_series_date_modified").innerHTML = context.dateModified;
+
+
+            document.getElementById("ui_btn_take_single_measurement").disabled = false;
+            document.getElementById("ui_inp_single_measurement_interval").disabled = false;
+            document.getElementById("ui_inp_single_measurement_amount").disabled = false;
+            document.getElementById("ui-btn-delete-meas-series").disabled = false;
+            document.getElementById("ui-btn-export-meas-series").disabled = false;
+            document.getElementById("ui-btn-close-meas-series").disabled = false;
+            document.getElementById("ui-btn-save-meas-series").disabled = false;
+        } break;
+
+        case 'measurement-series-closed': {
+            document.getElementById("tbl_current_meas_series").getElementsByTagName("tbody")[0].innerHTML = "";
+
+            // Reset
+            document.getElementById("ui_txt_current_meas_series_name").innerHTML = "-";
+            document.getElementById("ui_txt_current_meas_series_date_created").innerHTML = "-";
+            document.getElementById("ui_txt_current_meas_series_date_modified").innerHTML = "-";
+
+            document.getElementById("ui_btn_take_single_measurement").disabled = true;
+            document.getElementById("ui_inp_single_measurement_interval").disabled = true;
+            document.getElementById("ui_inp_single_measurement_amount").disabled = true;
+            document.getElementById("ui-btn-delete-meas-series").disabled = true;
+            document.getElementById("ui-btn-export-meas-series").disabled = true;
+            document.getElementById("ui-btn-close-meas-series").disabled = true;
+            document.getElementById("ui-btn-save-meas-series").disabled = true;
         } break;
     }
 }
@@ -333,35 +370,18 @@ function toggle_continuous() {
 
 
 function ui_btn_new_meas_series_clicked() {
-    if (m_current_meas_series == null) {
-        var name = prompt("Bitte geben Sie einen Namen für die neue Messreihe ein.");
-        if (name == null)
-            return;
-        
-        if (name.length < 3) {
-            UIkit.notification({
-                message: "Der Dateiname einer Messreihe muss mindestens 3 Zeichen beinhalten!",
-                status: "danger",
-                pos: "top-center",
-                timeout: 3000
-            });
-        }
+    if (m_current_meas_series == null) {     
 
         // Add check if filename already exists in IndexedDB
 
+        const name = "Neue Messreihe";
         m_current_meas_series = create_new_measurement_series(name);
         m_current_meas_series.dataChangedEventHandler = current_measurement_series_updated_event_handler;
-        document.getElementById("ui_txt_current_meas_series_name").innerHTML = name;
-        document.getElementById("ui_txt_current_meas_series_date_created").innerHTML = m_current_meas_series.dateCreated;
-        document.getElementById("ui_txt_current_meas_series_date_modified").innerHTML = m_current_meas_series.dateModified;
-
-        var btn = document.getElementById("ui_btn_new_meas_series");
-        btn.innerHTML = "Messreihe speichern und schließen";
-        btn.onclick = ui_btn_close_meas_series_clicked;
-
-        document.getElementById("ui_btn_take_single_measurement").disabled = false;
-        document.getElementById("ui_inp_single_measurement_interval").disabled = false;
-        document.getElementById("ui_inp_single_measurement_amount").disabled = false;
+        ui_update_state('measurement-series-created', {
+            name: m_current_meas_series.name,
+            dateCreated: m_current_meas_series.dateCreated,
+            dateModified: m_current_meas_series.dateModified
+        });
 
     } else {
         // Another measurement series is still open
@@ -376,8 +396,10 @@ function ui_btn_new_meas_series_clicked() {
 
 
 function ui_btn_close_meas_series_clicked() {
-    if (!confirm("Möchten Sie die Messreihe wirklich speichern und schließen?"))
-        return;
+
+    if (m_current_meas_series.dirty)
+        if (!confirm("Möchten Sie die Messreihe wirklich speichern und schließen?"))
+            return;
     
     UIkit.notification({
         message: "Das Speichern einer Messreihe ist noch nicht möglich!",
@@ -393,19 +415,7 @@ function ui_btn_close_meas_series_clicked() {
 
     // Clear everything
     m_current_meas_series = null;
-    document.getElementById("tbl_current_meas_series").getElementsByTagName("tbody")[0].innerHTML = "";
-
-    // Reset
-    var btn = document.getElementById("ui_btn_new_meas_series");
-    btn.innerHTML = "Neue Messreihe anlegen";
-    document.getElementById("ui_txt_current_meas_series_name").innerHTML = "-";
-    document.getElementById("ui_txt_current_meas_series_date_created").innerHTML = "-";
-        document.getElementById("ui_txt_current_meas_series_date_modified").innerHTML = "-";
-    btn.onclick = ui_btn_new_meas_series_clicked;
-
-    document.getElementById("ui_btn_take_single_measurement").disabled = true;
-        document.getElementById("ui_inp_single_measurement_interval").disabled = true;
-        document.getElementById("ui_inp_single_measurement_amount").disabled = true;
+    ui_update_state('measurement-series-closed');
 }
 
 function ui_btn_take_single_meas_clicked() {
@@ -549,6 +559,7 @@ function create_new_measurement_series(_name) {
         name: _name,
         dateCreated: new Date(),
         dateModified: new Date(),
+        dirty: true,
         labels: [
             "Lufttemperatur [degC]", "Luftdruck [hPa]", "Luftfeuchtigkeit [%rH]",
             "Schneetemperatur [degC]", "Schneehärte [?]", "Schneefeuchtigkeit [?]",

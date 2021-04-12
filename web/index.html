@@ -135,8 +135,10 @@
                         </table> 
                         <div class="ui-connection-independent">               
                             <button id="ui_btn_new_meas_series" class="uk-button uk-button-primary" onclick="ui_btn_new_meas_series_clicked()">Neue Messreihe anlegen</button>
-                            <button class="uk-button uk-button-default">Messreihe exportieren (CSV)</button>
-                            <button class="uk-button uk-button-danger">Messreihe löschen</button>
+                            <button id="ui-btn-save-meas-series" class="uk-button uk-button-primary" onclick="ui_btn_save_meas_series()">Messreihe speichern</button>
+                            <button id="ui-btn-close-meas-series" class="uk-button uk-button-primary" onclick="ui_btn_close_meas_series_clicked()">Messreihe schließen</button>
+                            <button id="ui-btn-export-meas-series" class="uk-button uk-button-default" onclick="ui_btn_export_meas_series()">Messreihe exportieren (CSV)</button>
+                            <button id="ui-btn-delete-meas-series" class="uk-button uk-button-danger" onclick="ui_btn_delete_meas_series()">Messreihe löschen</button>
                         </div>
                         <br>
                         <div id="ui_form_single_measurement" class="uk-form-stacked uk-grid-small uk-grid-match" uk-grid> 
