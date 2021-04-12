@@ -6,7 +6,7 @@
 nrf_drv_twi_t* m_twi;
 uint8_t m_read_buf[SNOW_GPS_DATA_BUFFER_SIZE+1] = {0};
 
-snow_gps_position_information m_current_position;
+snow_gps_position_information_raw m_current_position;
 
 ubx_packet m_last_cfg_packet = {
     .valid = SNOW_GPS_UBX_PCKG_INVALID
@@ -256,7 +256,7 @@ uint8_t snow_gps_on_data_read() {
                 // Data valid; do stuff 
                 process_ubx_packet(&p);
             } else {
-                // Checksum mismatch; ignore packet
+                free(p.payload);
             }
 
             // Put location control variable at the current spot and reset sentence
@@ -282,9 +282,9 @@ uint8_t snow_gps_process_nmea_line(uint8_t* line, uint8_t size) {
         case MINMEA_SENTENCE_RMC: {
             struct minmea_sentence_rmc frame;
             if (minmea_parse_rmc(&frame, line)) {
-                m_current_position.latitude = minmea_tocoord(&frame.latitude);
-                m_current_position.longitude = minmea_tocoord(&frame.longitude);
-                m_current_position.speed = minmea_tocoord(&frame.speed);
+                m_current_position.latitude = frame.latitude;
+                m_current_position.longitude = frame.longitude;
+                m_current_position.speed = frame.speed;
                 m_current_position.date = frame.date;
                 m_current_position.time = frame.time;
                 m_current_position.valid = frame.valid;
@@ -334,6 +334,20 @@ uint8_t snow_gps_process_nmea_line(uint8_t* line, uint8_t size) {
 
 
 void snow_gps_get_position(snow_gps_position_information* pos) {
+    snow_gps_position_information p = {
+        .latitude = minmea_tocoord(&m_current_position.latitude),
+        .longitude = minmea_tocoord(&m_current_position.longitude),
+        .speed = minmea_tocoord(&m_current_position.speed),
+        .date = m_current_position.date,
+        .time = m_current_position.time,
+        .valid = m_current_position.valid
+    };
+
+    *pos = p;
+}
+
+
+void snow_gps_get_position_raw(snow_gps_position_information_raw* pos) {
     *pos = m_current_position;
 }
 
@@ -411,4 +425,6 @@ void process_ubx_packet(ubx_packet* p) {
         // Unknown package class
         //
     }
+
+    free(p->payload);
 }

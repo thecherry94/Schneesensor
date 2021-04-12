@@ -76,7 +76,7 @@ static void parse_ble_command(uint8_t* cmd, uint8_t len) {
             uint16_t interval = ((uint16_t)cmd[1] << 8) | cmd[2];
             bool timestamp = cmd[3] == 1;
 
-            snow_slave_toggle_continuous_measurement();
+            snow_slave_toggle_continuous_measurement(interval);
         } break;
 
         case 'm': {
@@ -192,24 +192,30 @@ uint32_t snow_ble_data_send(uint8_t* data, uint16_t len) {
     if (data[len-1] != '\n' && data[len-2] != '\r')
         return NRF_ERROR_INVALID_DATA;
     
-    uint16_t max_len = BLE_NUS_MAX_DATA_LEN;
-    uint16_t current_pos = 0;
+    uint16_t max_len = 0;
+    uint8_t current_pos = 0;
 
     // Notify main module that a transmission is about to start
     snow_slave_ble_on_tx_start();
 
-    do {
+    while (len - current_pos - max_len != 0) {
+        max_len = BLE_NUS_MAX_DATA_LEN;
         // If the remaining length is smaller than a data chunk
         if (len - current_pos < BLE_NUS_MAX_DATA_LEN) 
             // set the chunk length for the final one accordingly
             max_len = len - current_pos;
 
         // Send a chunk of data
-        err_code = ble_nus_data_send(&m_nus, data + current_pos, &max_len, m_conn_handle);
+        do {
+            err_code = ble_nus_data_send(&m_nus, data + current_pos, &max_len, m_conn_handle);
+        } while (err_code == NRF_ERROR_RESOURCES);
+
+        printf("send");
+        printf("%d", len - current_pos - max_len);
 
         // Increase position pointer
-        current_pos += BLE_NUS_MAX_DATA_LEN;       
-    } while (err_code == NRF_ERROR_RESOURCES);
+        current_pos += max_len;       
+    }
 
     return err_code;
 }

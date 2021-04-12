@@ -68,6 +68,12 @@ typedef struct snow_slave_measurement_t {
 } snow_slave_measurement_t;
 
 
+typedef struct bme_data_buffer {
+    int64_t   temperature;
+    uint64_t  pressure;
+    uint64_t  humidity;
+} bme_data_buffer;
+
 // Enums
 //
 
@@ -95,6 +101,7 @@ typedef enum snow_slave_contmeas_state_t {
 } snow_slave_contmeas_state_t;
 
 
+
 //
 // Functions
 //
@@ -118,7 +125,7 @@ uint8_t snow_slave_check_components(uint8_t components);
 uint8_t snow_slave_reset_components(uint8_t components);
 
 
-void snow_slave_toggle_continuous_measurement();
+void snow_slave_toggle_continuous_measurement(uint16_t interval);
 void snow_slave_single_measurement(uint16_t meas_interval, uint8_t meas_amount);
 void snow_slave_ble_send_device_info();
 void snow_slave_ble_send_error(uint8_t cmd, uint8_t err_code, uint8_t* err_desc, uint8_t err_desc_len);

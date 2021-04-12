@@ -1,16 +1,196 @@
 <html>
     <head>
         <title>Schneesensor Web GUI</title>
-        <script src="ble.js"></script>
-
-        <script>
-            function on_test_click() {
-                connect();
-            }
-        </script>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="css/uikit.min.css" />
+        <link rel="stylesheet" href="css/custom-style.css">
+        <script src="js/uikit.min.js"></script>
+        <script src="js/uikit-icons.min.js"></script>
+        <script src="js/chart.min.js"></script>
+        <script src="js/ble.js"></script>
+        <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBIwzALxUPNbatRBj3Xi1Uhp0fFzwWNBkE&callback=initMap&libraries=&v=weekly" async></script>
     </head>
 
-    <body>
-        <button id="test" onclick="on_test_click()">Test</button>
+    <body onload="on_load()">
+        <nav class="uk-navbar-container uk-margin">
+            <div class="uk-navbar-left">
+                <a class="uk-navbar-toggle" uk-toggle="target: #navmenu">
+                    <span uk-navbar-toggle-icon></span> <span class="uk-margin-small-left">Navigation</span>
+                </a>
+                <button id="nb-btn-toggle-connection" class="uk-button uk-button-primary uk-navbar-item" onclick="toggle_connection()">Verbinden</button>
+                <div class="uk-card uk-card-default uk-card-small uk-navbar-item uk-navbar-right">
+                    <span class="uk-card-title">Verbindungsstatus</span>
+                    <div id="nb-txt-con-status" class="uk-card-body uk-text-small uk-text-bolder" style="color: rgb(255, 0, 0)">Nicht verbunden</div>
+                </div>
+            </div>
+        </nav>
+
+
+
+
+        <!-- Navigation side bar menu -->
+        <div id="navmenu" uk-offcanvas>
+            <div class="uk-offcanvas-bar">
+                <h1>Navigation</h1>
+                <ul class="uk-nav uk-nav-primary" uk-switcher="connect: #main-content-nav; connect: .content-class; animation: uk-animation-fade">
+                    <li><a href="#" onclick="UIkit.offcanvas('#navmenu').hide()">Home</a></li>
+                    <li><a href="#" onclick="UIkit.offcanvas('#navmenu').hide()">Kontinuierliche Messung</a></li>
+                    <li><a href="#" onclick="UIkit.offcanvas('#navmenu').hide()">Einzelne Messungen</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main content pages -->
+        <div id="main-content">
+            <div>
+                <ul id="content-breadcrumb" class="uk-breadcrumb">
+                    <ul class="uk-switcher content-class">
+                        <li>
+                            <ul id="content-breadcrumb" class="uk-breadcrumb">
+                                <li>Schneesensor</li>
+                                <li>Home</li>
+                            </ul>
+                        </li>
+                        <li>
+                            <ul id="content-breadcrumb" class="uk-breadcrumb">
+                                <li>Schneesensor</li>
+                                <li>Kontinuierliche Messung</li>
+                            </ul>
+                        </li>
+                        <li>
+                            <ul id="content-breadcrumb" class="uk-breadcrumb">
+                                <li>Schneesensor</li>
+                                <li>Einzelne Messungen</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </ul>
+            </div>   
+
+            <div>
+                <ul id="main-content-nav" class="uk-switcher content-class">
+                    <li>
+                        <ul uk-tab>
+                            <li><a href="#">Startseite</a></li>
+                            <li><a href="#">Endgerätinformationen</a></li>
+                            <li><a href="#">App-Info</a></li>
+                        </ul>
+                        <ul class="uk-switcher">
+                            <li>
+                                <article class="uk-article">
+                                    <h1 class="uk-article-title">HsKA Schneequalitätsmesssystem</h1>
+                                    <p class="uk-article-meta"></p>
+                                    <p>
+                                        Willkommen bei der Web-App vom HsKA Schneequalitätsmesssystem. <br>
+                                        Bitte drücken Sie auf den "Verbinden"-Button, der sich in der Navigationsleiste befindet, damit Sie sich mit einem kompatiblen Endgerät verbinden können. <br>
+                                        Sämtliche Funktionen stehen erst nach dem Aufbau einer Verbindung zu Verfügung.
+                                    </p>
+                                </article>
+                            </li>
+
+                            <li>
+                                Not implemented yet
+                            </li>
+
+                            <li>
+                                Alpha Version
+                            </li>
+                        </ul>                
+                    </li>
+
+                    <li>   
+                        <div>
+                            <button id="btn-cont-toggle-continuous" class="uk-button uk-button-primary" onclick="toggle_continuous()">Live Datenaufzeichnung starten</button>
+                            <button id="btn-cont-export-csv" class="uk-button uk-button-default" onclick="display_not_impl_notification()">CSV Export</button>           
+                        </div>
+                        <div class="simple-chart-container">
+                            <div class="simple-chart"><canvas id="chart-air-temperature"></canvas></div>
+                            <div class="simple-chart"><canvas id="chart-air-pressure"></canvas></div>
+                            <div class="simple-chart"><canvas id="chart-air-humidity"></canvas></div>
+                        </div>
+                    </li>
+
+                    <li>                   
+                        <table class="uk-table uk-table-small uk-table-justify">
+                            <thead>
+                                <tr>
+                                    <th class="uk-width-small" rowspan="3">Aktuelle Messung</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Dateiname</td>
+                                    <td id="ui_txt_current_meas_series_name">-</td>
+                                </tr>
+                                <tr>
+                                    <td>Erstellt</td>
+                                    <td id="ui_txt_current_meas_series_date_created">-</td>
+                                </tr>
+                                <tr>
+                                    <td>Zuletzt modifiziert</td>
+                                    <td id="ui_txt_current_meas_series_date_modified">-</td>
+                                </tr>
+                            </tbody>
+                        </table> 
+                        <div>               
+                            <button id="ui_btn_new_meas_series" class="uk-button uk-button-primary" onclick="ui_btn_new_meas_series_clicked()">Neue Messreihe anlegen</button>
+                            <button class="uk-button uk-button-default">Messreihe exportieren (CSV)</button>
+                            <button class="uk-button uk-button-danger">Messreihe löschen</button>
+                        </div>
+                        <br>
+                        <div id="ui_form_single_measurement" class="uk-form-stacked uk-grid-small uk-grid-match" uk-grid> 
+                            <div class="uk-width-1-6@s">
+                                <button id="ui_btn_take_single_measurement" class="uk-button uk-button-primary" onclick="ui_btn_take_single_meas_clicked()" disabled>Messung starten</button>
+                            </div>
+                            <div class="uk-width-1-6@s">
+                                <label class="uk-form-label">Interval</label>
+                                <input id="ui_inp_single_measurement_interval" type="text" class="uk-input uk-form-width-xsmall uk-form-small" disabled>
+                            </div>
+                            <div class="uk-width-1-6@s">
+                                <label class="uk-form-label">Anzahl</label>
+                                <input id="ui_inp_single_measurement_amount" type="text" class="uk-input uk-form-width-xsmall uk-form-small" disabled>
+                            </div>
+                        </div>
+                        <div>
+                            <ul uk-tab>
+                                <li><a href="#">Tabelle</a></li>
+                                <li><a href="#">Google-Maps</a></li>
+                            </ul>
+
+                            <ul class="uk-switcher">
+                                <li>
+                                    Tabellarische Ansicht der einzelnen Messwerte
+                                    <table id="tbl_current_meas_series" class="uk-table uk-table-striped">
+                                        <thead>
+                                            <th>Lufttemperatur [degC]</th>
+                                            <th>Luftdruck [hPa]</th>
+                                            <th>Luftfeuchtigkeit [%rH]</th>
+                                            <th>Schneetemperatur [degC]</th>
+                                            <th>Schneehärte [?]</th>
+                                            <th>Schneefeuchtigkeit [?]</th>
+                                            <th>Latitude</th>
+                                            <th>Longitude</th>
+                                            <th>Position akkurat</th>
+                                        </thead>
+                                        <tbody>
+
+                                        </tbody>
+                                    </table>
+                                </li>
+
+                                <li id="ui_tab_maps">
+                                    Ansicht der einzelnen Messwerte mit Markierung auf Google-Maps <br>
+                                    Dieses Feature steht nur zur Verfügung, wenn eine Internetverbindung vorhanden ist
+                                    <div>
+                                        <div id="ui_map" style="width:80%; height:80%;"></div>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>  
+                    </li>
+                </ul>
+            </div>
+        </div>
     </body>
 </html>

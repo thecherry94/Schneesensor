@@ -33,7 +33,6 @@
 #define SNOW_GPS_DATA_BUFFER_SIZE           1024
 #define SNOW_GPS_DATA_CHUNK_SIZE            128
 #define UBX_PCKG_MIN_LEN                    0x08
-#define UBX_PCKG_CFG_PM2_LEN                0x2C
 
 // I²C addresses of modules
 //
@@ -49,12 +48,6 @@
 //
 #define SNOW_GPS_UBX_1                      0xB5
 #define SNOW_GPS_UBX_2                      0x62
-#define SNOW_GPS_EXTINT0                    0x00
-#define SNOW_GPS_EXTINT0                    0x01
-
-
-#define SNOW_GPS_PWM_MODE_ON_OFF            0x00
-#define SNOW_GPS_PWM_MODE_CYCLIC            0x01
 
 
 
@@ -74,29 +67,11 @@
 #define     UBX_PCKG_CLASS_ESF              0x10
 
 
-
-
-
-
 // IDs
-#define     UBX_ID_ACK_ACK                  0x01
-#define     UBX_ID_ACK_NACK                 0x00
-#define     UBX_PCKG_ID_CFG_PM2             0x3B      // Extended power management configuration
+#define UBX_ID_ACK_ACK                     0x01
+#define UBX_ID_ACK_NACK                    0x00
 
 
-
-
-typedef struct snow_gps_power_configuration {
-    uint8_t ext_int_pin;            // 0 = extint0; 1 = extint1
-    bool ext_int_wake;
-    bool ext_int_backup;
-    bool limit_current;
-    bool wait_time_fix;
-    bool update_rtc;
-    bool update_eph;
-    bool do_not_enter_off;
-    uint8_t mode;                   // 0 = on/off operation; 1 = cyclic tracking operation
-} snow_gps_power_configuration;
 
 
 
@@ -137,6 +112,16 @@ typedef struct snow_gps_position_information {
 } snow_gps_position_information;
 
 
+typedef struct snow_gps_position_information_raw {
+    struct minmea_float latitude;
+    struct minmea_float longitude;
+    struct minmea_float speed;
+    struct minmea_date date;
+    struct minmea_time time;
+    bool valid;
+} snow_gps_position_information_raw;
+
+
 // Structure to hold UBX protocol package information for sending and receiving configuration options
 // cls <=> class
 // id <=> id
@@ -168,11 +153,8 @@ uint8_t snow_gps_read_data();
 uint8_t snow_gps_on_data_read();
 uint8_t snow_gps_process_nmea_line(uint8_t* line, uint8_t size);
 
-uint8_t snow_gps_configure_power_management(snow_gps_power_configuration* cfg);
-uint8_t snow_gps_poll_power_management(snow_gps_power_configuration* cfg);
-
-bool snow_gps_get_position(snow_gps_position_information* pos);
-
+void snow_gps_get_position(snow_gps_position_information* pos);
+void snow_gps_get_position_raw(snow_gps_position_information_raw* pos);
 
 void calculate_checksum(ubx_packet* p);
 
