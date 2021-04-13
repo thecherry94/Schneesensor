@@ -33,6 +33,8 @@ var m_current_meas_series = null;
 
 var m_map;
 
+var m_db;
+
 
 function ui_update_state(state, context) {
     var txt_con_status = document.getElementById("nb-txt-con-status");
@@ -52,7 +54,7 @@ function ui_update_state(state, context) {
             btn_con.classList.add("uk-button-danger");
 
             // Select all tags inside tags with the class .ui-content except for tags with the class .ui-connection-independent
-            Array.prototype.forEach.call(document.querySelectorAll(".ui-content :not(.ui-connection-independent) *"), content => {
+            Array.prototype.forEach.call(document.querySelectorAll(".ui-content * :not(.ui-connection-independent)"), content => {
                 content.disabled = false;
             });
         } break;
@@ -74,7 +76,7 @@ function ui_update_state(state, context) {
             btn_con.classList.remove("uk-button-danger");
             btn_con.classList.add("uk-button-primary");
             
-            Array.prototype.forEach.call(document.querySelectorAll(".ui-content :not(.ui-connection-independent) *"), content => {
+            Array.prototype.forEach.call(document.querySelectorAll(".ui-content * :not(.ui-connection-independent)"), content => {
                 content.disabled = true;
             });
         } break;
@@ -106,8 +108,29 @@ function ui_update_state(state, context) {
             document.getElementById("ui_inp_single_measurement_amount").disabled = false;
             document.getElementById("ui-btn-delete-meas-series").disabled = false;
             document.getElementById("ui-btn-export-meas-series").disabled = false;
-            document.getElementById("ui-btn-close-meas-series").disabled = false;
             document.getElementById("ui-btn-save-meas-series").disabled = false;
+
+            var btn_openclose = document.getElementById("ui-btn-openclose-meas-series");
+            btn_openclose.innerHTML = "Messreihe schließen";
+            btn_openclose.onclick = ui_btn_close_meas_series_clicked;
+        } break;
+
+        case 'measurement-series-opened': {
+            document.getElementById("ui_txt_current_meas_series_name").innerHTML = context.name;
+            document.getElementById("ui_txt_current_meas_series_date_created").innerHTML = context.dateCreated;
+            document.getElementById("ui_txt_current_meas_series_date_modified").innerHTML = context.dateModified;
+
+
+            document.getElementById("ui_btn_take_single_measurement").disabled = false;
+            document.getElementById("ui_inp_single_measurement_interval").disabled = false;
+            document.getElementById("ui_inp_single_measurement_amount").disabled = false;
+            document.getElementById("ui-btn-delete-meas-series").disabled = false;
+            document.getElementById("ui-btn-export-meas-series").disabled = false;
+            document.getElementById("ui-btn-save-meas-series").disabled = false;
+
+            var btn_openclose = document.getElementById("ui-btn-openclose-meas-series");
+            btn_openclose.innerHTML = "Messreihe schließen";
+            btn_openclose.onclick = ui_btn_close_meas_series_clicked;
         } break;
 
         case 'measurement-series-closed': {
@@ -123,8 +146,11 @@ function ui_update_state(state, context) {
             document.getElementById("ui_inp_single_measurement_amount").disabled = true;
             document.getElementById("ui-btn-delete-meas-series").disabled = true;
             document.getElementById("ui-btn-export-meas-series").disabled = true;
-            document.getElementById("ui-btn-close-meas-series").disabled = true;
             document.getElementById("ui-btn-save-meas-series").disabled = true;
+
+            var btn_openclose = document.getElementById("ui-btn-openclose-meas-series");
+            btn_openclose.innerHTML = "Messreihe öffnen";
+            btn_openclose.onclick = ui_btn_close_meas_series_clicked;
         } break;
     }
 }
@@ -424,6 +450,18 @@ function ui_btn_take_single_meas_clicked() {
     nus_send_str(cmd);
 }
 
+function ui_btn_save_meas_series() {
+    if (m_current_meas_series == null)
+        return;
+    
+    UIkit.modal.prompt("Dateiname:", m_current_meas_series.name).then(function(name) {
+        m_current_meas_series.name = name;
+        save_measurement_series_to_db(ms);
+    }, function() {
+
+    });
+}
+
 function current_measurement_series_updated_event_handler(ev) {
     if (ev.type == "added") {
         var table = document.getElementById("tbl_current_meas_series");
@@ -451,6 +489,54 @@ function current_measurement_series_updated_event_handler(ev) {
     }
 }
 
+
+function load_measurement_series_from_db(name) {
+    return new Promise(function(resolve) {
+
+        if (m_db == null)
+            return resolve(null);
+
+        var ms_store = m_db.transaction("measurement_series", "readwrite").objectStore("measurement_series");
+        var request = ms_store.get(name);
+
+        request.onerror = function(ev) {
+            UIkit.notification({
+                message: "Fehler beim Zugriff auf IndexedDB.\n" + ev.target.errorCode,
+                status: "danger",
+                pos: "top-center",
+                timeout: 5000
+            });
+        }
+
+        request.onsuccess = function(ev) {
+            return resolve(ev.target.result);
+        }
+    });
+}
+
+
+function save_measurement_series_to_db(ms) {
+    if (m_db == null)
+        return;
+
+    var ms_store = m_db.transaction("measurement_series", "readwrite").objectStore("measurement_series");
+    var request = ms_store.add({
+        name: ms.name,
+        dateCreated: ms.dateCreated,
+        dateModified: ms.dateModified,
+        data: ms.data
+    });
+
+    request.onsuccess = function(ev) {
+        console.log(ev);
+        return ev;
+    }
+
+    request.onerror = function(ev) {
+        console.log(ev);
+        return ev;
+    }     
+}
 
 
 function initMap() {
@@ -499,10 +585,14 @@ function on_load() {
     m_chart_air_humidity = create_simple_line_chart(m_ctx_air_humidity, "Luftfeuchtigkeit [%rH]", 'rgb(0, 0, 255)');
 
     initMap();
+    init_indexeddb();
 
-    Array.prototype.forEach.call(document.querySelectorAll(".ui-content :not(.ui-connection-independent) *"), content => {
+    Array.prototype.forEach.call(document.querySelectorAll(".ui-content * :not(.ui-connection-independent)"), content => {
         content.disabled = true;
     });
+
+    ui_update_state('measurement-series-closed');
+ 
 
     /*
     m_chart = new Chart(m_ctx, {
@@ -549,6 +639,37 @@ function on_load() {
         }
     });
     */
+}
+
+
+function init_indexeddb() {
+    var request = window.indexedDB.open("snow_data");
+
+    request.onerror = function(ev) {
+        console.log("IndexedDB init failed");
+        UIkit.notification({
+            message: "Fehler beim Zugriff auf IndexedDB.\n" + ev.target.errorCode,
+            status: "danger",
+            pos: "top-center",
+            timeout: 5000
+        });
+    };
+
+    request.onsuccess = function(ev) {
+        console.log("IndexedDB init success");
+        m_db = ev.target.result;
+    };
+
+    request.onupgradeneeded = function(ev) {
+        console.log("upgrade");
+        m_db = ev.target.result;
+
+        var obj_store = m_db.createObjectStore("measurement_series", { keyPath: "name" });
+        obj_store.createIndex("name", "name", { unique: true });
+        obj_store.createIndex("date_created", "dateCreated", { unique: false });
+        obj_store.createIndex("date_modified", "dateModified", { unique: false });
+        obj_store.createIndex("data", "data", { unique: false });     
+    };
 }
 
 function create_new_measurement_series(_name) {
