@@ -19,3 +19,12 @@
     width: 100%;
     height: 100%;
 }
+
+#ui-tbl-open-measurement-series tbody tr:hover {
+    background-color: beige;
+}
+
+#ui-tbl-open-measurement-series tbody tr[selected] {
+    background-color: lightblue;
+}
+

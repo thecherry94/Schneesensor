@@ -133,6 +133,57 @@
                                 </tr>
                             </tbody>
                         </table> 
+
+                        <div id="ui-modal-open-measurement-series" uk-modal>
+                            <div class="uk-modal-dialog">
+                                <button class="uk-modal-close-default" uk-close></button>
+                                <div class="uk-modal-header">
+                                    <h2 class="uk-modal-title">Messreihe öffnen</h2>
+                                </div>
+                                <div class="uk-modal-body">
+                                    <table id="ui-tbl-open-measurement-series" class="uk-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Erstellt</th>
+                                                <th>Modifiziert</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                                <div class="uk-modal-footer">
+                                    <button class="uk-button uk-button-default uk-modal-close ui-connection-independent">Abbrechen</button>
+                                    <button id="ui-modal-btn-open-measurement-series" class="uk-button uk-button-primary ui-connection-independent" onclick="ui_modal_btn_open_meas_series_clicked()">Öffnen</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="ui-modal-file-select" uk-modal>
+                            <div class="uk-modal-dialog">
+                                <button class="uk-modal-close-default" uk-close></button>
+                                <div class="uk-modal-header">
+                                    <h2 class="uk-modal-title"></h2>
+                                </div>
+                                <div class="uk-modal-body">
+                                    <table id="ui-tbl-open-measurement-series" class="uk-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Erstellt</th>
+                                                <th>Modifiziert</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                                <div class="uk-modal-footer">
+                                    <button id="ui-modal-file-select-btn-cancel" class="uk-button uk-button-default uk-modal-close ui-connection-independent">Abbrechen</button>
+                                    <button id="ui-modal-file-select-btn-custom" class="uk-button uk-button-primary ui-connection-independent">Öffnen</button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div>      
                             <button class="uk-button uk-button-primary ui-connection-independent">Datei</button>    
                             <div uk-dropdown>
@@ -146,7 +197,7 @@
                         <br>
                         <div id="ui_form_single_measurement" class="uk-form-stacked uk-grid-small uk-grid-match" uk-grid> 
                             <div class="uk-width-1-6@s">
-                                <button id="ui_btn_take_single_measurement" class="uk-button uk-button-primary" onclick="ui_btn_take_single_meas_clicked()" disabled>Messung starten</button>
+                                <button id="ui_btn_take_single_measurement" class="uk-button uk-button-primary ui-connection-independent" onclick="ui_btn_take_single_meas_clicked()" disabled>Messung starten</button>
                             </div>
                             <div class="uk-width-1-6@s">
                                 <label class="uk-form-label">Interval</label>

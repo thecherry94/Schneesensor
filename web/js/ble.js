@@ -150,7 +150,7 @@ function ui_update_state(state, context) {
 
             var btn_openclose = document.getElementById("ui-btn-openclose-meas-series");
             btn_openclose.innerHTML = "Messreihe öffnen";
-            btn_openclose.onclick = ui_btn_close_meas_series_clicked;
+            btn_openclose.onclick = ui_btn_open_meas_series_clicked;
         } break;
     }
 }
@@ -456,10 +456,104 @@ function ui_btn_save_meas_series() {
     
     UIkit.modal.prompt("Dateiname:", m_current_meas_series.name).then(function(name) {
         m_current_meas_series.name = name;
-        save_measurement_series_to_db(ms);
+        save_measurement_series_to_db(m_current_meas_series).then(ev => {
+            if (ev.target.error == 0) {
+                UIkit.notification({
+                    message: "Dateiname bereits vorhanden!",
+                    status: "danger",
+                    pos: "top-center",
+                    timeout: 5000
+                });
+            }
+        });
     }, function() {
 
     });
+}
+
+function ui_btn_open_meas_series_clicked() {
+    load_all_measurement_series_from_db().then(mss => {
+        var table = document.getElementById("ui-tbl-open-measurement-series").getElementsByTagName("tbody")[0];
+        var rows = [];
+        mss.forEach(ms => {
+            var row = table.insertRow(-1);
+            rows.push(row);
+            row.insertCell(0).innerHTML = ms.name;
+            row.insertCell(1).innerHTML = ui_format_date(ms.dateCreated);
+            row.insertCell(2).innerHTML = ui_format_date(ms.dateModified);
+
+            row.onclick = function() {
+                rows.forEach(r => {
+                    r.removeAttribute("selected");
+                });
+                row.setAttribute("selected", "");
+            }
+        });
+
+        UIkit.util.on("#ui-modal-open-measurement-series", "hidden", function() {
+            
+        });
+        UIkit.modal("#ui-modal-open-measurement-series").show();
+    });  
+}
+
+function ui_modal_btn_open_meas_series_clicked() {
+    var name = document.querySelector("#ui-tbl-open-measurement-series tbody tr[selected]").firstChild.innerText;
+    if (name != null) {
+        load_measurement_series_from_db(name).then(ms => {
+            m_current_meas_series = ms;
+            m_current_meas_series.dataChangedEventHandler = current_measurement_series_updated_event_handler;
+            document.getElementById("ui_txt_current_meas_series_name").innerHTML = ms.name;
+            document.getElementById("ui_txt_current_meas_series_date_created").innerHTML = ms.dateCreated;
+            document.getElementById("ui_txt_current_meas_series_date_modified").innerHTML = ms.dateModified;
+            ui_refresh_meas_series_table(ms);
+            UIkit.modal("#ui-modal-open-measurement-series").hide();
+        });
+    }
+}
+
+function ui_refresh_meas_series_table(ms) {
+    var table = document.querySelector("#tbl_current_meas_series tbody");
+    
+    table.innerHTML = "";
+    ms.data.forEach(m => {
+        var row = table.insertRow(-1);
+        for (var i = 0; i < ms.data[0].length; i++)
+            row.insertCell(-1).innerHTML = m[i];
+    });
+}
+
+
+function display_file_select_modal(_title, confirm_btn_name) {
+    return new Promise((resolve, reject) => {
+        var modal;
+        var title = modal.querySelector(".uk-modal-title");
+        var table = modal.querySelector("tbody");
+        var btn_cancel = modal.querySelector("ui-modal-file-select-btn-cancel");
+        var btn_custom = modal.querySelector("ui-modal-file-select-btn-custom");
+
+        title.innerText = _title;
+        btn_custom.innerText = confirm_btn_name;
+
+        btn_cancel.onclick = function() {
+            reject({ 
+                data: {}, 
+                status: "canceled"
+            });
+        }
+
+        btn_custom.onclick = function() {
+            resolve({
+                data: "",
+                status: "confirmed"
+            });
+        }
+    });
+}
+
+
+function ui_format_date(date) {
+    return date.toUTCString();
 }
 
 function current_measurement_series_updated_event_handler(ev) {
@@ -514,28 +608,53 @@ function load_measurement_series_from_db(name) {
     });
 }
 
+function load_all_measurement_series_from_db() {
+    return new Promise(function(resolve) {
+        if (m_db == null)
+            return resolve(null);
+        
+        var ms_store = m_db.transaction("measurement_series", "readwrite").objectStore("measurement_series");
+        var request = ms_store.getAll();
+
+        request.onerror = function(ev) {
+            UIkit.notification({
+                message: "Fehler beim Zugriff auf IndexedDB.\n" + ev.target.errorCode,
+                status: "danger",
+                pos: "top-center",
+                timeout: 5000
+            });
+        }
+
+        request.onsuccess = function(ev) {
+            return resolve(ev.target.result);
+        }
+    });
+}
+
 
 function save_measurement_series_to_db(ms) {
     if (m_db == null)
         return;
 
-    var ms_store = m_db.transaction("measurement_series", "readwrite").objectStore("measurement_series");
-    var request = ms_store.add({
-        name: ms.name,
-        dateCreated: ms.dateCreated,
-        dateModified: ms.dateModified,
-        data: ms.data
-    });
+    return new Promise(function(resolve) {
+        var ms_store = m_db.transaction("measurement_series", "readwrite").objectStore("measurement_series");
+        var request = ms_store.add({
+            name: ms.name,
+            dateCreated: ms.dateCreated,
+            dateModified: ms.dateModified,
+            data: ms.data
+        });
 
-    request.onsuccess = function(ev) {
-        console.log(ev);
-        return ev;
-    }
+        request.onsuccess = function(ev) {
+            console.log(ev);
+            return resolve(ev);
+        }
 
-    request.onerror = function(ev) {
-        console.log(ev);
-        return ev;
-    }     
+        request.onerror = function(ev) {
+            console.log(ev);
+            return resolve(ev);
+        }
+    });   
 }
 
 
