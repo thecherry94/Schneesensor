@@ -20,11 +20,11 @@
     height: 100%;
 }
 
-#ui-tbl-open-measurement-series tbody tr:hover {
+#ui-modal-tbl-file-list tbody tr:hover {
     background-color: beige;
 }
 
-#ui-tbl-open-measurement-series tbody tr[selected] {
+#ui-modal-tbl-file-list tbody tr.selected {
     background-color: lightblue;
 }
 

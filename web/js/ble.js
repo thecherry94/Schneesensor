@@ -472,7 +472,7 @@ function ui_btn_save_meas_series() {
 }
 
 function ui_btn_open_meas_series_clicked() {
-    load_all_measurement_series_from_db().then(mss => {
+    /*load_all_measurement_series_from_db().then(mss => {
         var table = document.getElementById("ui-tbl-open-measurement-series").getElementsByTagName("tbody")[0];
         var rows = [];
         mss.forEach(ms => {
@@ -494,7 +494,24 @@ function ui_btn_open_meas_series_clicked() {
             
         });
         UIkit.modal("#ui-modal-open-measurement-series").show();
-    });  
+    });  */
+
+    ui_display_file_select_modal("Messreihe öffnen", "Öffnen").then(result => {
+        var name = result.data;
+        console.log(result.data);
+        if (name != null) {
+            load_measurement_series_from_db(name).then(ms => {
+                m_current_meas_series = ms;
+                m_current_meas_series.dataChangedEventHandler = current_measurement_series_updated_event_handler;
+                document.getElementById("ui_txt_current_meas_series_name").innerHTML = ms.name;
+                document.getElementById("ui_txt_current_meas_series_date_created").innerHTML = ms.dateCreated;
+                document.getElementById("ui_txt_current_meas_series_date_modified").innerHTML = ms.dateModified;
+                ui_refresh_meas_series_table(ms);
+            });
+        }
+    }, result => {
+        console.log("User canceled dialog")
+    });
 }
 
 function ui_modal_btn_open_meas_series_clicked() {
@@ -524,27 +541,46 @@ function ui_refresh_meas_series_table(ms) {
 }
 
 
-function display_file_select_modal(_title, confirm_btn_name) {
+function ui_display_file_select_modal(_title, confirm_btn_name) {
     return new Promise((resolve, reject) => {
-        var modal;
+        const modal_html = '<button class="uk-modal-close-default" uk-close></button> <div class="uk-modal-header"> <h2 class="uk-modal-title"></h2> </div> <div class="uk-modal-body"> <table id="ui-modal-tbl-file-list" class="uk-table"> <thead> <tr> <th>Name</th> <th>Erstellt</th> <th>Modifiziert</th> </tr> </thead> <tbody></tbody> </table> </div> <div class="uk-modal-footer"> <button id="ui-modal-file-select-btn-cancel" class="uk-button uk-button-default uk-modal-close ui-connection-independent">Abbrechen</button> <button id="ui-modal-file-select-btn-custom" class="uk-button uk-button-primary uk-modal-close ui-connection-independent">Öffnen</button> </div>';
+        var modal = UIkit.modal.dialog(modal_html).$el;
         var title = modal.querySelector(".uk-modal-title");
         var table = modal.querySelector("tbody");
-        var btn_cancel = modal.querySelector("ui-modal-file-select-btn-cancel");
-        var btn_custom = modal.querySelector("ui-modal-file-select-btn-custom");
+        var btn_cancel = modal.querySelector("#ui-modal-file-select-btn-cancel");
+        var btn_custom = modal.querySelector("#ui-modal-file-select-btn-custom");
 
         title.innerText = _title;
         btn_custom.innerText = confirm_btn_name;
 
+        load_all_measurement_series_from_db().then(mss => {
+            var rows = [];
+            mss.forEach(ms => {
+                var row = table.insertRow();
+                rows.push(row);
+                row.insertCell().innerHTML = ms.name;
+                row.insertCell().innerHTML = ui_format_date(ms.dateCreated);
+                row.insertCell().innerHTML = ui_format_date(ms.dateModified);
+    
+                row.onclick = function() {
+                    rows.forEach(r => {
+                        r.classList.remove("selected");
+                    });
+                    row.classList.add("selected");
+                };
+            });
+        });
+        
         btn_cancel.onclick = function() {
             reject({ 
-                data: {}, 
+                data: null, 
                 status: "canceled"
             });
         }
 
         btn_custom.onclick = function() {
             resolve({
-                data: "",
+                data: modal.querySelector("tr.selected").firstChild.innerText,
                 status: "confirmed"
             });
         }
