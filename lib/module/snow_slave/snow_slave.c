@@ -22,12 +22,18 @@
 
 #include "app_timer.h"
 
-#include "ble_nus.h"
+#include "nrf_drv_saadc.h"
 
+#include "ble_nus.h"
 
 #include "snow_slave.h"
 #include "ble_module.h"
 #include "ble_snow_service.h"
+
+#include "nrf_fstorage_sd.h"
+#include "fds.h"
+
+#include "snow_wps250.h"
 
 #include <math.h>
 
@@ -44,6 +50,10 @@ ble_snow_t* ble_snow_sh = NULL;
 #define BME_TIMER_INTERVAL    APP_TIMER_TICKS(150)
 #define ACCL_TIMER_INTERVAL   APP_TIMER_TICKS(150)
 #define CONT_TIMER_INTERVAL   APP_TIMER_TICKS(1000)
+
+
+#define SAADC_CALIBRATION_INTERVAL 5 
+#define SAADC_SAMPLES_IN_BUFFER 1
 
 
 struct snow_adxl362_device   m_adxl_dev1;
@@ -69,6 +79,7 @@ APP_TIMER_DEF(m_gps_timer_id);
 APP_TIMER_DEF(m_bme_timer_id);
 APP_TIMER_DEF(m_accl_timer_id);
 APP_TIMER_DEF(m_cont_timer_id);
+APP_TIMER_DEF(m_saadc_timer_id);
 
 volatile bool m_tx_ready = false;
 volatile bool m_ble_connected = false;
@@ -80,6 +91,10 @@ volatile bool m_measure_accl = false;
 volatile bool m_measure_hardness = false;
 volatile bool m_measure_moisture = false;
 volatile bool m_measure_temperature = false;
+
+bool m_fds_intialized = false;
+fds_stat_t m_fds_stat = {0};
+bool m_flag_gc = true;
 
 
 volatile bool m_ble_send_flag = false;
@@ -96,8 +111,140 @@ volatile enum snow_slave_main_state_t m_main_state = SNOW_SLAVE_MAIN_IDLE;
 volatile enum snow_slave_singlemeas_state_t m_singlemeas_state = SNOW_SLAVE_SINGLEMEAS_IDLE;
 volatile enum snow_slave_contmeas_state_t m_contmeas_state = SNOW_SLAVE_CONTMEAS_IDLE;
 
+static bool m_saadc_calibrate = false;
+static uint32_t m_adc_evt_counter = 0;
+static nrf_saadc_value_t m_saadc_buffer[2][SAADC_SAMPLES_IN_BUFFER];
+
+
+snow_slave_measurement_series_t m_test_series = {0};
+
+
+void save_measurement_series(snow_slave_measurement_series_t* ms) {
+    fds_record_t record = {
+        .file_id = ms->file_id,
+        .key = 0x100,
+        .data.p_data = &ms->info,
+        .data.length_words = sizeof(snow_slave_measurement_series_info_t) / sizeof(uint32_t) + 1
+    };
+
+    fds_record_desc_t desc = {0};
+    fds_find_token_t  tok  = {0};
+
+    ret_code_t rc;
+    rc = fds_record_find(ms->file_id, 0x100, &desc, &tok);
+    if (rc == NRF_SUCCESS) {
+        printf("File found!\n");
+        fds_flash_record_t rec_info = {0};
+        fds_flash_record_t rec_meas = {0};
+        snow_slave_measurement_series_t mss;
+
+        rc = fds_record_open(&desc, &rec_info);
+        memcpy(&mss.info, rec_info.p_data, sizeof(snow_slave_measurement_series_info_t));
+        rc = fds_record_close(&desc);
+
+       
+        for (uint8_t i = 0; i < 128; i++) {
+            uint16_t key = 0x100 + 1 + i;
+            rc = fds_record_find(ms->file_id, key, &desc, &tok);
+            if (rc == NRF_SUCCESS) {
+                rc = fds_record_open(&desc, &rec_meas); 
+                memcpy(&mss.measurements[i], rec_meas.p_data, sizeof(snow_slave_measurement_t));
+                rc = fds_record_close(&desc);
+                printf("Record read!\n");
+            } else {
+                printf("Record not found! key: %d\n", key);
+            }
+        }
+        printf("");
+    } else {
+        printf("File created!\n");
+        rc = fds_record_write(&desc, &record);
+        record.key++;     
+        for (uint8_t i = 0; i < 128; i++) {
+            record.data.p_data = &ms->measurements[i];
+            record.data.length_words = sizeof(snow_slave_measurement_t) / sizeof(uint32_t) + 1;
+            do {
+                rc = fds_record_write(&desc, &record);
+            } while (rc == FDS_ERR_NO_SPACE_IN_QUEUES);
+                
+            if (rc == NRF_SUCCESS)
+                printf("Record created key: %d!\n", record.key);
+            else 
+                printf("Record failed!\n");
+            record.key++;       
+        }       
+    }
+}
+
+
+
+void fds_update_stat() {
+    ret_code_t err_code;
+    err_code = fds_stat(&m_fds_stat);
+}
+
+
+void fds_evt_handler(fds_evt_t const * ev) {
+    switch (ev->id) {
+        case FDS_EVT_INIT: {
+            m_fds_intialized = ev->result == NRF_SUCCESS;
+        } break;
+        case FDS_EVT_WRITE: {
+            if (ev->result == NRF_SUCCESS) {
+                NRF_LOG_INFO("Record ID:\t0x%04x",  ev->write.record_id);
+                NRF_LOG_INFO("File ID:\t0x%04x",    ev->write.file_id);
+                NRF_LOG_INFO("Record key:\t0x%04x", ev->write.record_key);
+                fds_update_stat();
+            }
+        } break;
+
+        case FDS_EVT_DEL_RECORD: {
+            if (ev->result == NRF_SUCCESS) {
+                NRF_LOG_INFO("Record ID:\t0x%04x",  ev->del.record_id);
+                NRF_LOG_INFO("File ID:\t0x%04x",    ev->del.file_id);
+                NRF_LOG_INFO("Record key:\t0x%04x", ev->del.record_key);
+            }
+        } break;
+
+        case FDS_EVT_GC : { 
+            if (ev->result == NRF_SUCCESS) {
+                m_flag_gc = true;
+                NRF_LOG_INFO("GC_Fertig",  ev->del.record_id);
+            }
+        } break;
+    }
+}
+
+
+void saadc_callback_handler(nrf_drv_saadc_evt_t const * p_event) {
+    
+}
+
+void flash_init() {
+    ret_code_t err_code;
+    fds_register(fds_evt_handler);
+    err_code = fds_init();
+    err_code = fds_gc();
+    err_code = fds_stat(&m_fds_stat);
+    m_flag_gc = false;
+}
+
+void saadc_init() {
+    ret_code_t err_code;
+
+    //nrf_saadc_channel_config_t channel_config = NRFX_SAADC_DEFAULT_CHANNEL_CONFIG_SE(NRF_SAADC_INPUT_AIN4);
+    err_code = nrf_drv_saadc_init(NULL, saadc_callback_handler);
+}
+
+
+
+
 static bool ble_send_ready() {
     return m_tx_ready && m_ble_connected;
+}
+
+static void timer_saadc_timer_timeout_handler(void* context) {
+    nrf_drv_saadc_calibrate_offset();                                      //Trigger the SAADC SAMPLE task	
 }
 
 static void timer_accl_timer_timeout_handler(void* context) {
@@ -264,6 +411,7 @@ uint8_t snow_slave_init() {
     #endif
 
     sensors_init();
+    flash_init();
 
     return err_code;
 }
@@ -349,15 +497,48 @@ void test_ble() {
     ret_code_t err_code = app_timer_init();
     err_code = snow_ble_init();  
 
+    saadc_init();
+    snow_wps250_init(NRF_SAADC_INPUT_AIN4);
+    float displacement;
+
     app_timer_create(&m_accl_timer_id, APP_TIMER_MODE_REPEATED, timer_accl_timer_timeout_handler);
     app_timer_create(&m_bme_timer_id, APP_TIMER_MODE_REPEATED, timer_bme_timer_timeout_handler);
     app_timer_create(&m_gps_timer_id, APP_TIMER_MODE_REPEATED, timer_gps_timer_timeout_handler);
     app_timer_create(&m_cont_timer_id, APP_TIMER_MODE_REPEATED, timer_cont_timer_timeout_handler);
+    app_timer_create(&m_saadc_timer_id, APP_TIMER_MODE_REPEATED, timer_saadc_timer_timeout_handler);
+
+    app_timer_start(m_saadc_timer_id, APP_TIMER_TICKS(1000), NULL);
     
     snow_gps_read_data();
 
+    snow_slave_measurement_series_t ms;
+    ms.file_id = 0xAFFD;
+    ms.info.date_created.day = 1;
+    ms.info.date_created.month = 12;
+    ms.info.date_created.year = 1232;
+    ms.info.date_modified.day = 21;
+    ms.info.date_modified.month = 123;
+    ms.info.date_modified.year = 12342;
+    ms.info.time_created.hours = 1;
+    ms.info.time_created.minutes = 12;
+    ms.info.time_created.seconds = 1232;
+    ms.info.time_modified.hours = 26431;
+    ms.info.time_modified.minutes = 14223;
+    ms.info.time_modified.seconds = 123242;
+
+    struct snow_slave_measurement_t* m = &ms.measurements[0];
+    m->bme_data.temperature = 2342;
+    m->snow_hardness = 420;
+    m->snow_moisture = 69;
+
+    save_measurement_series(&ms);
+
     // Main program loop
     for (;;) {
+
+        nrf_delay_ms(250);
+        snow_wps250_displacement(&displacement);
+        printf("WPS250 displacement [mm]: %f\n", displacement);
 
         // Taking measurements of the sensors is done independently from the main state machine
         //

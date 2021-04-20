@@ -57,6 +57,11 @@ function ui_update_state(state, context) {
             Array.prototype.forEach.call(document.querySelectorAll(".ui-content * :not(.ui-connection-independent)"), content => {
                 content.disabled = false;
             });
+
+            if (m_current_meas_series != null)
+                Array.prototype.forEach.call(document.querySelectorAll(".ui-measurement-series-control, .ui-measurement-series-control *"), content => {
+                    content.disabled = false;
+                });
         } break;
 
         case 'connecting': {
@@ -79,6 +84,8 @@ function ui_update_state(state, context) {
             Array.prototype.forEach.call(document.querySelectorAll(".ui-content * :not(.ui-connection-independent)"), content => {
                 content.disabled = true;
             });
+
+            document.getElementById("ui_btn_take_single_measurement").disabled = true;
         } break;
 
         case 'continuous-measurement-stated': {
@@ -102,10 +109,9 @@ function ui_update_state(state, context) {
             document.getElementById("ui_txt_current_meas_series_date_created").innerHTML = context.dateCreated;
             document.getElementById("ui_txt_current_meas_series_date_modified").innerHTML = context.dateModified;
 
+            if (m_connected)
+                document.getElementById("ui_btn_take_single_measurement").disabled = false;
 
-            document.getElementById("ui_btn_take_single_measurement").disabled = false;
-            document.getElementById("ui_inp_single_measurement_interval").disabled = false;
-            document.getElementById("ui_inp_single_measurement_amount").disabled = false;
             document.getElementById("ui-btn-delete-meas-series").disabled = false;
             document.getElementById("ui-btn-export-meas-series").disabled = false;
             document.getElementById("ui-btn-save-meas-series").disabled = false;
@@ -113,6 +119,11 @@ function ui_update_state(state, context) {
             var btn_openclose = document.getElementById("ui-btn-openclose-meas-series");
             btn_openclose.innerHTML = "Messreihe schließen";
             btn_openclose.onclick = ui_btn_close_meas_series_clicked;
+
+            if (m_connected)
+                Array.prototype.forEach.call(document.querySelectorAll(".ui-measurement-series-control, .ui-measurement-series-control *"), content => {
+                    content.disabled = false;
+                });
         } break;
 
         case 'measurement-series-opened': {
@@ -120,10 +131,9 @@ function ui_update_state(state, context) {
             document.getElementById("ui_txt_current_meas_series_date_created").innerHTML = context.dateCreated;
             document.getElementById("ui_txt_current_meas_series_date_modified").innerHTML = context.dateModified;
 
-
-            document.getElementById("ui_btn_take_single_measurement").disabled = false;
-            document.getElementById("ui_inp_single_measurement_interval").disabled = false;
-            document.getElementById("ui_inp_single_measurement_amount").disabled = false;
+            if (m_connected)
+                document.getElementById("ui_btn_take_single_measurement").disabled = false;
+            
             document.getElementById("ui-btn-delete-meas-series").disabled = false;
             document.getElementById("ui-btn-export-meas-series").disabled = false;
             document.getElementById("ui-btn-save-meas-series").disabled = false;
@@ -131,6 +141,11 @@ function ui_update_state(state, context) {
             var btn_openclose = document.getElementById("ui-btn-openclose-meas-series");
             btn_openclose.innerHTML = "Messreihe schließen";
             btn_openclose.onclick = ui_btn_close_meas_series_clicked;
+
+            if (m_connected)
+                Array.prototype.forEach.call(document.querySelectorAll(".ui-measurement-series-control, .ui-measurement-series-control *"), content => {
+                    content.disabled = false;
+                });
         } break;
 
         case 'measurement-series-closed': {
@@ -142,8 +157,6 @@ function ui_update_state(state, context) {
             document.getElementById("ui_txt_current_meas_series_date_modified").innerHTML = "-";
 
             document.getElementById("ui_btn_take_single_measurement").disabled = true;
-            document.getElementById("ui_inp_single_measurement_interval").disabled = true;
-            document.getElementById("ui_inp_single_measurement_amount").disabled = true;
             document.getElementById("ui-btn-delete-meas-series").disabled = true;
             document.getElementById("ui-btn-export-meas-series").disabled = true;
             document.getElementById("ui-btn-save-meas-series").disabled = true;
@@ -151,6 +164,10 @@ function ui_update_state(state, context) {
             var btn_openclose = document.getElementById("ui-btn-openclose-meas-series");
             btn_openclose.innerHTML = "Messreihe öffnen";
             btn_openclose.onclick = ui_btn_open_meas_series_clicked;
+
+            Array.prototype.forEach.call(document.querySelectorAll(".ui-measurement-series-control, .ui-measurement-series-control *"), content => {
+                content.disabled = true;
+            });
         } break;
     }
 }
@@ -503,9 +520,7 @@ function ui_btn_open_meas_series_clicked() {
             load_measurement_series_from_db(name).then(ms => {
                 m_current_meas_series = ms;
                 m_current_meas_series.dataChangedEventHandler = current_measurement_series_updated_event_handler;
-                document.getElementById("ui_txt_current_meas_series_name").innerHTML = ms.name;
-                document.getElementById("ui_txt_current_meas_series_date_created").innerHTML = ms.dateCreated;
-                document.getElementById("ui_txt_current_meas_series_date_modified").innerHTML = ms.dateModified;
+                ui_update_state('measurement-series-opened', ms);
                 ui_refresh_meas_series_table(ms);
             });
         }

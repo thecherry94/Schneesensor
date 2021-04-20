@@ -159,32 +159,29 @@
                             </div>
                         </div>
 
-  
-
-                        <div>      
-                            <button class="uk-button uk-button-primary ui-connection-independent">Datei</button>    
-                            <div uk-dropdown>
-                                <button id="ui_btn_new_meas_series" class="uk-button uk-button-primary uk-button-small ui-connection-independent" onclick="ui_btn_new_meas_series_clicked()">Neue Messreihe anlegen</button>
-                                <button id="ui-btn-save-meas-series" class="uk-button uk-button-primary uk-button-small ui-connection-independent" onclick="ui_btn_save_meas_series()">Messreihe speichern</button>
-                                <button id="ui-btn-openclose-meas-series" class="uk-button uk-button-primary uk-button-small ui-connection-independent" onclick="ui_btn_openclose_meas_series_clicked()">Messreihe öffnen</button>
-                                <button id="ui-btn-export-meas-series" class="uk-button uk-button-default uk-button-small ui-connection-independent" onclick="ui_btn_export_meas_series()">Messreihe exportieren (CSV)</button>
-                                <button id="ui-btn-delete-meas-series" class="uk-button uk-button-danger uk-button-small ui-connection-independent" onclick="ui_btn_delete_meas_series()">Messreihe löschen</button>
-                            </div>  
+                        <div>
+                            <ul class="uk-subnav" uk-tab>
+                                <li><a href="#">Datei</a></li>
+                                <li><a href="#">Messung</a></li>
+                            </ul>
+                            <ul class="uk-switcher">
+                                <li>
+                                    <button id="ui_btn_new_meas_series" class="uk-button uk-button-primary uk-button-small ui-connection-independent" onclick="ui_btn_new_meas_series_clicked()">Neue Messreihe anlegen</button>
+                                    <button id="ui-btn-save-meas-series" class="uk-button uk-button-primary uk-button-small ui-connection-independent" onclick="ui_btn_save_meas_series()">Messreihe speichern</button>
+                                    <button id="ui-btn-openclose-meas-series" class="uk-button uk-button-primary uk-button-small ui-connection-independent" onclick="ui_btn_openclose_meas_series_clicked()">Messreihe öffnen</button>
+                                    <button id="ui-btn-export-meas-series" class="uk-button uk-button-default uk-button-small ui-connection-independent" onclick="ui_btn_export_meas_series()">Messreihe exportieren (CSV)</button>
+                                    <button id="ui-btn-delete-meas-series" class="uk-button uk-button-danger uk-button-small ui-connection-independent" onclick="ui_btn_delete_meas_series()">Messreihe löschen</button>
+                                </li>
+                                <li class="ui-measurement-series-control">
+                                    <button id="ui-btn-measure-humidity-meas-series" class="uk-button uk-button-default uk-button-small ui-connection-independent">Messungen synchronisieren</button>
+                                    <button id="ui_btn_take_single_measurement" class="uk-button uk-button-primary uk-button-small ui-connection-independent" onclick="ui_btn_take_single_meas_clicked()" disabled>Volle Messung starten</button>
+                                    <button id="ui-btn-measure-humidity-meas-series" class="uk-button uk-button-default uk-button-small ui-connection-independent">Nur Schneefeuchtigkeit messen</button>
+                                    <button id="ui-btn-measure-humidity-meas-series" class="uk-button uk-button-default uk-button-small ui-connection-independent">Nur Schneehärte messen</button>
+                                    <button id="ui-btn-measure-humidity-meas-series" class="uk-button uk-button-default uk-button-small ui-connection-independent">Aktuelle Messung bestätigen</button>
+                                </li>
+                            </ul>
                         </div>
-                        <br>
-                        <div id="ui_form_single_measurement" class="uk-form-stacked uk-grid-small uk-grid-match" uk-grid> 
-                            <div class="uk-width-1-6@s">
-                                <button id="ui_btn_take_single_measurement" class="uk-button uk-button-primary ui-connection-independent" onclick="ui_btn_take_single_meas_clicked()" disabled>Messung starten</button>
-                            </div>
-                            <div class="uk-width-1-6@s">
-                                <label class="uk-form-label">Interval</label>
-                                <input id="ui_inp_single_measurement_interval" type="text" class="uk-input uk-form-width-xsmall uk-form-small" disabled>
-                            </div>
-                            <div class="uk-width-1-6@s">
-                                <label class="uk-form-label">Anzahl</label>
-                                <input id="ui_inp_single_measurement_amount" type="text" class="uk-input uk-form-width-xsmall uk-form-small" disabled>
-                            </div>
-                        </div>
+                        <br>                      
                         <div>
                             <ul uk-tab>
                                 <li><a href="#">Tabelle</a></li>

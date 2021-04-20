@@ -15,6 +15,7 @@ TODO:
 #include "snow_adxl362.h"
 #include "snow_bme680.h"
 #include "snow_gps.h"
+#include "minmea.h"
 
 
 #ifndef SNOW_SLAVE_H
@@ -58,14 +59,26 @@ TODO:
 // Structs
 //
 
+typedef struct snow_slave_measurement_series_info_t {
+    struct minmea_date date_created;
+    struct minmea_time time_created;
+    struct minmea_date date_modified;
+    struct minmea_time time_modified;
+} snow_slave_measurement_series_info_t;
+
 // Struct for holding measurement values
 typedef struct snow_slave_measurement_t {
-    struct snow_accl_xyz_t acceleration;
     struct bme680_field_data bme_data;
     struct snow_gps_position_information gps_data;
     uint16_t snow_moisture;
     uint16_t snow_hardness;
 } snow_slave_measurement_t;
+
+typedef struct snow_slave_measurement_series_t {
+    uint16_t file_id;
+    struct snow_slave_measurement_series_info_t info;
+    struct snow_slave_measurement_t measurements[128];
+} snow_slave_measurement_series_t;
 
 
 typedef struct bme_data_buffer {
