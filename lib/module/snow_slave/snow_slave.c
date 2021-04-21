@@ -119,62 +119,163 @@ static nrf_saadc_value_t m_saadc_buffer[2][SAADC_SAMPLES_IN_BUFFER];
 snow_slave_measurement_series_t m_test_series = {0};
 
 
-void save_measurement_series(snow_slave_measurement_series_t* ms) {
+
+
+// This function creates or updates a measurement series file 
+// Update if => file id exists
+// Create if => file id doesn't exist OR file id is zero
+// If file id zero => the next free file id will be selected by the file system manager and "returned" in the pointer of the parameter pointer's file id field
+//
+ret_code_t snow_slave_fds_save_measurement_series(snow_slave_measurement_series_t* mss) {
+    snow_slave_measurement_series_info_t* info = &mss->info;
+    snow_slave_measurement_t* ms = &mss->measurements;
+
     fds_record_t record = {
-        .file_id = ms->file_id,
-        .key = 0x100,
-        .data.p_data = &ms->info,
-        .data.length_words = sizeof(snow_slave_measurement_series_info_t) / sizeof(uint32_t) + 1
+        .file_id = FDS_ID_MEASUREMENT,
+        .key = mss->meas_id + FDS_KEY_OFFSET
     };
 
+    ret_code_t rc;
     fds_record_desc_t desc = {0};
-    fds_find_token_t  tok  = {0};
+    fds_find_token_t tok = {0};
+
+    if (record.key == FDS_KEY_OFFSET) {
+        // Create new record with the first free key available      
+        record.key = snow_slave_fds_get_first_free_key(FDS_ID_MEASUREMENT);
+        if (record.key == 0) 
+            return FDS_ERR_NOT_FOUND;
+           
+        rc = fds_record_find(FDS_ID_MEASUREMENT, record.key, &desc, &tok);
+        if (rc == FDS_ERR_NOT_FOUND) {
+            printf("Created new record\n");
+            record.data.p_data = info;
+            record.data.length_words = sizeof(snow_slave_measurement_series_info_t) / sizeof(uint32_t); // + sizeof(snow_slave_measurement_series_info_t) % sizeof(uint32_t) > 0 ? 1 : 0;
+            
+            // Write measurement series info record
+            rc = fds_record_write(&desc, &record);
+
+            // Write measurements
+            for (int i = 0; i < info->num_measurements; i++) {
+                record.data.p_data = &ms[i];
+                record.data.length_words = sizeof(snow_slave_measurement_t) / sizeof(uint32_t); //+ sizeof(snow_slave_measurement_t) % sizeof(uint32_t) > 0 ? 1 : 0;
+
+                rc = fds_record_write(&desc, &record);
+            }
+        } else {
+            return FDS_ERR_NOT_FOUND;
+        }
+
+        return NRF_SUCCESS;
+    } else {     
+        rc = fds_record_find(FDS_ID_MEASUREMENT, record.key, &desc, &tok);
+        if (rc == NRF_SUCCESS) {
+            printf("Updating existing record\n");
+            // Existing record found. Update.
+            record.data.p_data = info;
+            record.data.length_words = sizeof(snow_slave_measurement_series_info_t) / sizeof(uint32_t);// + sizeof(snow_slave_measurement_series_info_t) % sizeof(uint32_t) > 0 ? 1 : 0;
+            fds_record_update(&desc, &record);
+
+            for (int i = 0; i < info->num_measurements; i++) {
+                record.data.p_data = &ms[i];
+                record.data.length_words = sizeof(snow_slave_measurement_t) / sizeof(uint32_t);// + sizeof(snow_slave_measurement_t) % sizeof(uint32_t) > 0 ? 1 : 0;
+                
+                rc = fds_record_find(FDS_ID_MEASUREMENT, record.key, &desc, &tok);
+                if (rc == FDS_ERR_NOT_FOUND) 
+                    return FDS_ERR_NOT_FOUND;
+                
+                fds_record_update(&desc, &record);
+            }
+        } else {
+            return rc;
+        }
+    }   
+}
+
+
+uint16_t snow_slave_fds_get_first_free_key(uint16_t file_id) {
+    uint16_t key_counter = FDS_KEY_OFFSET + 1;
+    fds_record_desc_t desc = {0};
+    fds_find_token_t tok = {0};
+    
+    ret_code_t rc = fds_record_find(FDS_ID_MEASUREMENT, key_counter, &desc, &tok);
+    while (rc == NRF_SUCCESS)  {
+        key_counter++;
+        if (key_counter > 100) 
+            return 0;
+
+        rc = fds_record_find(FDS_ID_MEASUREMENT, key_counter, &desc, &tok);
+    }
+
+    printf("Found free record key: %d\n", key_counter);
+    
+    return key_counter;
+}
+
+
+
+ret_code_t snow_slave_fds_load_measurement_series(snow_slave_measurement_series_t* mss) {
+    snow_slave_measurement_series_info_t* info = &mss->info;
+    snow_slave_measurement_t* ms = &mss->measurements;
+
+    fds_record_t record;
 
     ret_code_t rc;
-    rc = fds_record_find(ms->file_id, 0x100, &desc, &tok);
+    fds_record_desc_t desc = {0};
+    fds_find_token_t tok = {0};
+    uint16_t key = mss->meas_id + FDS_KEY_OFFSET;
+
+    rc = fds_record_find(FDS_ID_MEASUREMENT, key, &desc, &tok);
     if (rc == NRF_SUCCESS) {
-        printf("File found!\n");
-        fds_flash_record_t rec_info = {0};
-        fds_flash_record_t rec_meas = {0};
-        snow_slave_measurement_series_t mss;
+        printf("Loading existent record\n");
+        fds_record_open(&desc, &record);
+        memcpy(info, record.data.p_data, sizeof(snow_slave_measurement_series_info_t));
+        fds_record_close(&desc);
 
-        rc = fds_record_open(&desc, &rec_info);
-        memcpy(&mss.info, rec_info.p_data, sizeof(snow_slave_measurement_series_info_t));
-        rc = fds_record_close(&desc);
-
-       
-        for (uint8_t i = 0; i < 128; i++) {
-            uint16_t key = 0x100 + 1 + i;
-            rc = fds_record_find(ms->file_id, key, &desc, &tok);
-            if (rc == NRF_SUCCESS) {
-                rc = fds_record_open(&desc, &rec_meas); 
-                memcpy(&mss.measurements[i], rec_meas.p_data, sizeof(snow_slave_measurement_t));
-                rc = fds_record_close(&desc);
-                printf("Record read!\n");
-            } else {
-                printf("Record not found! key: %d\n", key);
-            }
+        uint8_t i = 0;
+        while (fds_record_find(FDS_ID_MEASUREMENT, key, &desc, &tok) == NRF_SUCCESS) {
+            fds_record_open(&desc, &record);
+            memcpy(&ms[i], record.data.p_data, sizeof(snow_slave_measurement_t));
+            fds_record_close(&desc);
+            i++;
         }
-        printf("");
+
+        return rc;
     } else {
-        printf("File created!\n");
-        rc = fds_record_write(&desc, &record);
-        record.key++;     
-        for (uint8_t i = 0; i < 128; i++) {
-            record.data.p_data = &ms->measurements[i];
-            record.data.length_words = sizeof(snow_slave_measurement_t) / sizeof(uint32_t) + 1;
-            do {
-                rc = fds_record_write(&desc, &record);
-            } while (rc == FDS_ERR_NO_SPACE_IN_QUEUES);
-                
-            if (rc == NRF_SUCCESS)
-                printf("Record created key: %d!\n", record.key);
-            else 
-                printf("Record failed!\n");
-            record.key++;       
-        }       
+        return rc;
     }
 }
+
+
+ret_code_t snow_slave_get_file_system_info(snow_slave_file_system_info_t* info) {
+    fds_record_t record = {
+        .file_id = 1,
+        .key = FDS_KEY_OFFSET
+    };
+
+    fds_record_desc_t desc;
+    fds_find_token_t tok;
+
+    ret_code_t rc;
+    rc = fds_record_find(record.file_id, record.key, &desc, &tok);
+
+    switch (rc) {
+        case NRF_SUCCESS: {
+            // File system management file found. Read and parse entries.
+
+            
+        } break;
+
+        case FDS_ERR_NOT_FOUND: {
+            // File system management file not found. Delete all flash memory. Create empty.
+        } break;
+
+        default: {
+            // Unknown error
+        } break;
+    }
+}
+
+
 
 
 
@@ -494,8 +595,7 @@ ret_code_t sensors_init() {
 
 
 void test_ble() {
-    ret_code_t err_code = app_timer_init();
-    err_code = snow_ble_init();  
+    
 
     saadc_init();
     snow_wps250_init(NRF_SAADC_INPUT_AIN4);
@@ -512,7 +612,8 @@ void test_ble() {
     snow_gps_read_data();
 
     snow_slave_measurement_series_t ms;
-    ms.file_id = 0xAFFD;
+    ms.meas_id = 0x0000;
+    ms.info.num_measurements = 1;
     ms.info.date_created.day = 1;
     ms.info.date_created.month = 12;
     ms.info.date_created.year = 1232;
@@ -531,7 +632,17 @@ void test_ble() {
     m->snow_hardness = 420;
     m->snow_moisture = 69;
 
-    save_measurement_series(&ms);
+    snow_slave_fds_save_measurement_series(&ms);
+
+
+    snow_slave_measurement_series_t ms_read;
+    ms_read.meas_id = 1;
+    snow_slave_fds_load_measurement_series(&ms_read);
+
+
+    ret_code_t err_code = app_timer_init();
+    err_code = snow_ble_init();  
+
 
     // Main program loop
     for (;;) {

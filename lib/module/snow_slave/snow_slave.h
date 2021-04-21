@@ -55,16 +55,23 @@ TODO:
 
 #define SNOW_SLAVE_BLE_BUFFER_SIZE        128
 
+#define FDS_KEY_OFFSET                    0x0010
+#define FDS_ID_MEASUREMENT                0x0020
+
 
 // Structs
 //
 
+// Struct for holding measurement series information
 typedef struct snow_slave_measurement_series_info_t {
     struct minmea_date date_created;
     struct minmea_time time_created;
     struct minmea_date date_modified;
     struct minmea_time time_modified;
+    uint8_t name[64];
+    uint8_t num_measurements;
 } snow_slave_measurement_series_info_t;
+
 
 // Struct for holding measurement values
 typedef struct snow_slave_measurement_t {
@@ -74,11 +81,20 @@ typedef struct snow_slave_measurement_t {
     uint16_t snow_hardness;
 } snow_slave_measurement_t;
 
+
+// Struct to hold all information related to a measurement series
 typedef struct snow_slave_measurement_series_t {
-    uint16_t file_id;
+    uint16_t meas_id;
     struct snow_slave_measurement_series_info_t info;
-    struct snow_slave_measurement_t measurements[128];
+    struct snow_slave_measurement_t* measurements[150];
 } snow_slave_measurement_series_t;
+
+
+// Struct containg information about the file system
+typedef struct snow_slave_file_system_info_t {
+    uint16_t file_id;
+    uint8_t name[64];
+} snow_slave_file_system_info_t;
 
 
 typedef struct bme_data_buffer {
@@ -144,6 +160,13 @@ void snow_slave_ble_send_device_info();
 void snow_slave_ble_send_error(uint8_t cmd, uint8_t err_code, uint8_t* err_desc, uint8_t err_desc_len);
 
 
+
+// File system management
+//
+ret_code_t snow_slave_fds_save_measurement_series(snow_slave_measurement_series_t* mss);
+ret_code_t snow_slave_fds_load_measurement_series(snow_slave_measurement_series_t* mss);
+uint16_t snow_slave_fds_get_first_free_key(uint16_t file_id);
+ret_code_t snow_slave_fds_load_measurement_series_by_name(uint8_t name, snow_slave_measurement_series_t* mss);
 
 
 
