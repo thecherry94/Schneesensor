@@ -86,7 +86,7 @@ typedef struct snow_slave_measurement_t {
 typedef struct snow_slave_measurement_series_t {
     uint16_t meas_id;
     struct snow_slave_measurement_series_info_t info;
-    struct snow_slave_measurement_t* measurements[150];
+    struct snow_slave_measurement_t measurements[150];
 } snow_slave_measurement_series_t;
 
 

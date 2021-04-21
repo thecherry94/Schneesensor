@@ -128,7 +128,7 @@ snow_slave_measurement_series_t m_test_series = {0};
 //
 ret_code_t snow_slave_fds_save_measurement_series(snow_slave_measurement_series_t* mss) {
     snow_slave_measurement_series_info_t* info = &mss->info;
-    snow_slave_measurement_t* ms = &mss->measurements;
+    snow_slave_measurement_t* ms = mss->measurements;
 
     fds_record_t record = {
         .file_id = FDS_ID_MEASUREMENT,
@@ -149,17 +149,21 @@ ret_code_t snow_slave_fds_save_measurement_series(snow_slave_measurement_series_
         if (rc == FDS_ERR_NOT_FOUND) {
             printf("Created new record\n");
             record.data.p_data = info;
-            record.data.length_words = sizeof(snow_slave_measurement_series_info_t) / sizeof(uint32_t); // + sizeof(snow_slave_measurement_series_info_t) % sizeof(uint32_t) > 0 ? 1 : 0;
+            record.data.length_words = sizeof(snow_slave_measurement_series_info_t) / sizeof(uint32_t) + (sizeof(snow_slave_measurement_series_info_t) % sizeof(uint8_t) ? 1 : 0);
             
             // Write measurement series info record
-            rc = fds_record_write(&desc, &record);
+            do {
+                rc = fds_record_write(&desc, &record);
+            } while (rc == FDS_ERR_NO_SPACE_IN_QUEUES); 
 
             // Write measurements
             for (int i = 0; i < info->num_measurements; i++) {
                 record.data.p_data = &ms[i];
-                record.data.length_words = sizeof(snow_slave_measurement_t) / sizeof(uint32_t); //+ sizeof(snow_slave_measurement_t) % sizeof(uint32_t) > 0 ? 1 : 0;
-
-                rc = fds_record_write(&desc, &record);
+                record.data.length_words = sizeof(snow_slave_measurement_t) / sizeof(uint32_t) + (sizeof(snow_slave_measurement_t) % sizeof(uint8_t) ? 1 : 0);
+                
+                do {
+                    rc = fds_record_write(&desc, &record);
+                } while (rc == FDS_ERR_NO_SPACE_IN_QUEUES); 
             }
         } else {
             return FDS_ERR_NOT_FOUND;
@@ -172,18 +176,22 @@ ret_code_t snow_slave_fds_save_measurement_series(snow_slave_measurement_series_
             printf("Updating existing record\n");
             // Existing record found. Update.
             record.data.p_data = info;
-            record.data.length_words = sizeof(snow_slave_measurement_series_info_t) / sizeof(uint32_t);// + sizeof(snow_slave_measurement_series_info_t) % sizeof(uint32_t) > 0 ? 1 : 0;
-            fds_record_update(&desc, &record);
+            record.data.length_words = sizeof(snow_slave_measurement_series_info_t) / sizeof(uint32_t) + (sizeof(snow_slave_measurement_series_info_t) % sizeof(uint8_t) ? 1 : 0);
+            do {
+                rc = fds_record_update(&desc, &record);
+            } while (rc == FDS_ERR_NO_SPACE_IN_QUEUES); 
 
             for (int i = 0; i < info->num_measurements; i++) {
                 record.data.p_data = &ms[i];
-                record.data.length_words = sizeof(snow_slave_measurement_t) / sizeof(uint32_t);// + sizeof(snow_slave_measurement_t) % sizeof(uint32_t) > 0 ? 1 : 0;
+                record.data.length_words = sizeof(snow_slave_measurement_t) / sizeof(uint32_t) + (sizeof(snow_slave_measurement_t) % sizeof(uint8_t) ? 1 : 0);
                 
                 rc = fds_record_find(FDS_ID_MEASUREMENT, record.key, &desc, &tok);
                 if (rc == FDS_ERR_NOT_FOUND) 
                     return FDS_ERR_NOT_FOUND;
                 
-                fds_record_update(&desc, &record);
+                do {
+                    rc = fds_record_update(&desc, &record);
+                } while (rc == FDS_ERR_NO_SPACE_IN_QUEUES); 
             }
         } else {
             return rc;
@@ -215,7 +223,7 @@ uint16_t snow_slave_fds_get_first_free_key(uint16_t file_id) {
 
 ret_code_t snow_slave_fds_load_measurement_series_by_meas_id(uint16_t meas_id, snow_slave_measurement_series_t* mss) {
     snow_slave_measurement_series_info_t* info = &mss->info;
-    snow_slave_measurement_t* ms = &mss->measurements;
+    snow_slave_measurement_t* ms = mss->measurements;
 
     fds_record_t record;
 
@@ -642,7 +650,7 @@ void test_ble() {
     ms_read.meas_id = 1;
     //snow_slave_fds_load_measurement_series(&ms_read);
 
-    snow_slave_fds_load_measurement_series_by_name("test", strlen("test"), NULL);
+    snow_slave_fds_load_measurement_series_by_name("test", strlen("test"), &ms_read);
 
 
     ret_code_t err_code = app_timer_init();
