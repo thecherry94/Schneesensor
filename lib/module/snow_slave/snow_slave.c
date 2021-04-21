@@ -246,35 +246,31 @@ ret_code_t snow_slave_fds_load_measurement_series(snow_slave_measurement_series_
 }
 
 
-ret_code_t snow_slave_get_file_system_info(snow_slave_file_system_info_t* info) {
-    fds_record_t record = {
-        .file_id = 1,
-        .key = FDS_KEY_OFFSET
-    };
-
-    fds_record_desc_t desc;
-    fds_find_token_t tok;
+ret_code_t snow_slave_fds_load_measurement_series_by_name(uint8_t* name, uint8_t len, snow_slave_measurement_series_t* mss) {
+    fds_record_t record;
 
     ret_code_t rc;
-    rc = fds_record_find(record.file_id, record.key, &desc, &tok);
+    fds_record_desc_t desc = {0};
+    fds_find_token_t tok = {0};
+    uint16_t key = FDS_KEY_OFFSET + 1;
 
-    switch (rc) {
-        case NRF_SUCCESS: {
-            // File system management file found. Read and parse entries.
+    snow_slave_measurement_series_info_t info;
 
-            
-        } break;
+    rc = fds_record_find(FDS_ID_MEASUREMENT, key, &desc, &tok);
+    while (rc == NRF_SUCCESS) {
+        fds_record_open(&desc, &record);
+        memcpy(&info, record.data.p_data, sizeof(snow_slave_measurement_series_info_t));
+        fds_record_close(&desc);
 
-        case FDS_ERR_NOT_FOUND: {
-            // File system management file not found. Delete all flash memory. Create empty.
-        } break;
-
-        default: {
-            // Unknown error
-        } break;
-    }
+        if (memcmp(info.name, name, len) == 0) {
+            printf("Record found by name\n");
+        }
+        
+        key++;
+        fds_find_token_t tok2 = {0};
+        rc = fds_record_find(FDS_ID_MEASUREMENT, key, &desc, &tok2);
+    } 
 }
-
 
 
 
@@ -613,6 +609,7 @@ void test_ble() {
 
     snow_slave_measurement_series_t ms;
     ms.meas_id = 0x0000;
+    strcpy(&ms.info.name, "test");
     ms.info.num_measurements = 1;
     ms.info.date_created.day = 1;
     ms.info.date_created.month = 12;
@@ -637,7 +634,9 @@ void test_ble() {
 
     snow_slave_measurement_series_t ms_read;
     ms_read.meas_id = 1;
-    snow_slave_fds_load_measurement_series(&ms_read);
+    //snow_slave_fds_load_measurement_series(&ms_read);
+
+    snow_slave_fds_load_measurement_series_by_name("test", strlen("test"), NULL);
 
 
     ret_code_t err_code = app_timer_init();
