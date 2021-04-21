@@ -157,9 +157,10 @@ void snow_slave_ble_send_error(uint8_t cmd, uint8_t err_code, uint8_t* err_desc,
 // File system management
 //
 ret_code_t snow_slave_fds_save_measurement_series(snow_slave_measurement_series_t* mss);
-ret_code_t snow_slave_fds_load_measurement_series(snow_slave_measurement_series_t* mss);
-uint16_t snow_slave_fds_get_first_free_key(uint16_t file_id);
+ret_code_t snow_slave_fds_load_measurement_series_by_meas_id(uint16_t meas_id, snow_slave_measurement_series_t* mss);
 ret_code_t snow_slave_fds_load_measurement_series_by_name(uint8_t* name, uint8_t len, snow_slave_measurement_series_t* mss);
+uint16_t snow_slave_fds_get_first_free_key(uint16_t file_id);
+
 
 
 

@@ -213,7 +213,7 @@ uint16_t snow_slave_fds_get_first_free_key(uint16_t file_id) {
 
 
 
-ret_code_t snow_slave_fds_load_measurement_series(snow_slave_measurement_series_t* mss) {
+ret_code_t snow_slave_fds_load_measurement_series_by_meas_id(uint16_t meas_id, snow_slave_measurement_series_t* mss) {
     snow_slave_measurement_series_info_t* info = &mss->info;
     snow_slave_measurement_t* ms = &mss->measurements;
 
@@ -222,7 +222,7 @@ ret_code_t snow_slave_fds_load_measurement_series(snow_slave_measurement_series_
     ret_code_t rc;
     fds_record_desc_t desc = {0};
     fds_find_token_t tok = {0};
-    uint16_t key = mss->meas_id + FDS_KEY_OFFSET;
+    uint16_t key = meas_id + FDS_KEY_OFFSET;
 
     rc = fds_record_find(FDS_ID_MEASUREMENT, key, &desc, &tok);
     if (rc == NRF_SUCCESS) {
@@ -256,16 +256,22 @@ ret_code_t snow_slave_fds_load_measurement_series_by_name(uint8_t* name, uint8_t
 
     snow_slave_measurement_series_info_t info;
 
+    // Check first record
     rc = fds_record_find(FDS_ID_MEASUREMENT, key, &desc, &tok);
     while (rc == NRF_SUCCESS) {
+        // Record exists. Extract info
         fds_record_open(&desc, &record);
         memcpy(&info, record.data.p_data, sizeof(snow_slave_measurement_series_info_t));
         fds_record_close(&desc);
-
+   
         if (memcmp(info.name, name, len) == 0) {
+            // Search name and measurement series name match. Load.
             printf("Record found by name\n");
+            snow_slave_fds_load_measurement_series_by_meas_id(key - FDS_KEY_OFFSET, mss);
+            return NRF_SUCCESS;
         }
         
+        // Not found yet. Keep looking.
         key++;
         fds_find_token_t tok2 = {0};
         rc = fds_record_find(FDS_ID_MEASUREMENT, key, &desc, &tok2);
