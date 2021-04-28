@@ -56,6 +56,8 @@ ret_code_t snow_slave_fds_save_measurement_series(snow_slave_measurement_series_
             return FDS_ERR_NOT_FOUND;
         }
 
+        fds_gc();
+        fds_update_stat();
         return NRF_SUCCESS;
     } else {     
         rc = fds_record_find(FDS_ID_MEASUREMENT, record.key, &desc, &tok);
@@ -80,6 +82,10 @@ ret_code_t snow_slave_fds_save_measurement_series(snow_slave_measurement_series_
                     rc = fds_record_update(&desc, &record);
                 } while (rc == FDS_ERR_NO_SPACE_IN_QUEUES); 
             }
+            
+            fds_gc();
+            fds_update_stat();
+            return NRF_SUCCESS;
         } else {
             return rc;
         }
@@ -174,6 +180,15 @@ ret_code_t snow_slave_fds_load_measurement_series_by_name(uint8_t* name, uint8_t
 }
 
 
+ret_code_t snow_slave_fds_delete_measurement_series_by_meas_id(uint16_t meas_id, snow_slave_measurement_series_t* mss) {
+
+}
+
+
+ret_code_t snow_slave_fds_delete_measurement_series_by_name(uint8_t* name, uint8_t len, snow_slave_measurement_series_t* mss) {
+
+}
+
 
 
 void fds_update_stat() {
@@ -191,8 +206,7 @@ void fds_evt_handler(fds_evt_t const * ev) {
             if (ev->result == NRF_SUCCESS) {
                 NRF_LOG_INFO("Record ID:\t0x%04x",  ev->write.record_id);
                 NRF_LOG_INFO("File ID:\t0x%04x",    ev->write.file_id);
-                NRF_LOG_INFO("Record key:\t0x%04x", ev->write.record_key);
-                fds_update_stat();
+                NRF_LOG_INFO("Record key:\t0x%04x", ev->write.record_key);              
             }
         } break;
 
