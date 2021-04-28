@@ -104,10 +104,19 @@
                             <button id="btn-cont-toggle-continuous" class="uk-button uk-button-primary" onclick="toggle_continuous()">Live Datenaufzeichnung starten</button>
                             <button id="btn-cont-export-csv" class="uk-button uk-button-default" onclick="display_not_impl_notification()">CSV Export</button>           
                         </div>
-                        <div class="simple-chart-container">
+                        <p class="uk-text-lead">Luftsensor</p> 
+                        <div class="simple-chart-container">           
                             <div class="simple-chart"><canvas id="chart-air-temperature"></canvas></div>
                             <div class="simple-chart"><canvas id="chart-air-pressure"></canvas></div>
                             <div class="simple-chart"><canvas id="chart-air-humidity"></canvas></div>
+                        </div>
+                        <div>
+                            <p class="uk-text-lead">Seilzugsensor (0-250 mm)</p>
+                            <progress class="uk-progress" value="0" max="250"></progress>
+                        </div>
+                        <div>
+                            <p class="uk-text-lead">Kraftsensor</p>     
+                            <p id="txt-force-sensor-value" class="uk-text-lead">0</p>                      
                         </div>
                     </li>
 
