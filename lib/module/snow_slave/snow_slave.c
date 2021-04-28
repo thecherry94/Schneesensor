@@ -37,6 +37,8 @@
 
 #include "snow_storage.h"
 
+#include "snow_hx711.h"
+
 #include <math.h>
 
 
@@ -68,6 +70,12 @@ struct snow_accl_xyz_raw_t                m_accl = {0};
 
 struct bme_data_buffer                    m_bme_data_single_buffer = {0};
 struct bme680_field_data                  m_bme_data_single = {0};
+
+float m_force_value = 0;
+float m_force_tare = 0;
+bool m_force_calibrated = false;
+
+float m_cable_displacement = 0;
 
 
 uint16_t m_snow_moisture = 42;
@@ -119,6 +127,46 @@ snow_slave_measurement_series_t m_test_series = {0};
 
 void saadc_callback_handler(nrf_drv_saadc_evt_t const * p_event) {
     
+}
+
+void snow_hx711_calibrate() {
+    m_force_calibrated = false;
+}
+
+void snow_hx711_event_handler(hx711_evt_t evt, int value) {
+    static int avg;
+    static int tare;
+    static int cnt;
+    static int runs;
+
+    if (evt == DATA_ERROR) {
+        printf("Error\n");
+        return;
+    }
+
+    avg += value;
+    cnt++;
+
+    if (cnt == 10) {
+        avg /= cnt;
+        cnt = 0;
+        if (m_force_calibrated) {
+            float n = (avg - tare) / 128.0f;
+            if (n < 3) n = 0;
+          
+            //printf("%f\n", n * 2.5362f);
+            m_force_value = n * 2.5362f;
+        } else {
+            tare += avg;
+            runs++;
+            printf("taring...\n");
+            if (runs == 10) {
+                tare /= runs;
+                m_force_calibrated = true;
+            }
+        }
+    }
+
 }
 
 void flash_init() {
@@ -410,48 +458,14 @@ void test_ble() {
     
     snow_gps_read_data();
 
-    snow_slave_measurement_series_t ms;
-    ms.meas_id = 0x0000;
-    strcpy(&ms.info.name, "test");
-    ms.info.num_measurements = 1;
-    ms.info.date_created.day = 1;
-    ms.info.date_created.month = 12;
-    ms.info.date_created.year = 1232;
-    ms.info.date_modified.day = 21;
-    ms.info.date_modified.month = 123;
-    ms.info.date_modified.year = 12342;
-    ms.info.time_created.hours = 1;
-    ms.info.time_created.minutes = 12;
-    ms.info.time_created.seconds = 1232;
-    ms.info.time_modified.hours = 26431;
-    ms.info.time_modified.minutes = 14223;
-    ms.info.time_modified.seconds = 123242;
-
-    struct snow_slave_measurement_t* m = &ms.measurements[0];
-    m->bme_data.temperature = 2342;
-    m->snow_hardness = 420;
-    m->snow_moisture = 69;
-
-    snow_slave_fds_save_measurement_series(&ms);
-
-
-    snow_slave_measurement_series_t ms_read;
-    ms_read.meas_id = 1;
-    //snow_slave_fds_load_measurement_series(&ms_read);
-
-    snow_slave_fds_load_measurement_series_by_name("test", strlen("test"), &ms_read);
-
-
     ret_code_t err_code = app_timer_init();
     err_code = snow_ble_init();  
 
+    hx711_init(INPUT_CH_A_128, snow_hx711_event_handler);
+    hx711_start(false);
 
     // Main program loop
     for (;;) {
-
-        nrf_delay_ms(250);
-        snow_wps250_displacement(&displacement);
-        printf("WPS250 displacement [mm]: %f\n", displacement);
 
         // Taking measurements of the sensors is done independently from the main state machine
         //
