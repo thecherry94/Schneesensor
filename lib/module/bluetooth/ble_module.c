@@ -135,13 +135,23 @@ static void parse_ble_command(uint8_t* cmd, uint8_t len) {
 // e => error
 // parameters: [command type; 1 byte][error type; 1 byte]{error description; x bytes} 
 //
+
+//#define BLE_USE_OLD_PROTOCOL
+
 static void parse_ble_query(uint8_t* cmd, uint16_t len) {
     uint16_t start = 0;
     for (uint8_t i = 0; i < len; i++) {
+        #ifdef BLE_USE_OLD_PROTOCOL
         if (cmd[i] == ';') {                       
             parse_ble_command(cmd + start, i - start);
+            start = i + 3;
+        }
+        #else
+        if (cmd[i] == 0xFF && cmd[i-1] == 0xFE && cmd[i-2] == 0xFF) {                       
+            parse_ble_command(cmd + start, i - start - 2);
             start = i + 1;
         }
+        #endif
     }
 }
 
@@ -193,7 +203,7 @@ uint32_t snow_ble_data_send(uint8_t* data, uint16_t len) {
         return NRF_ERROR_INVALID_DATA;
     
     uint16_t max_len = 0;
-    uint8_t current_pos = 0;
+    uint16_t current_pos = 0;
 
     // Notify main module that a transmission is about to start
     snow_slave_ble_on_tx_start();

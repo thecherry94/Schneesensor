@@ -67,12 +67,13 @@ struct snow_bme680_device    m_bme_dev;
 struct bme680_field_data                  m_bme_data = {0};
 struct snow_gps_position_information      m_gps_pos = {0};
 struct snow_accl_xyz_raw_t                m_accl = {0};
+float m_displacement = 0;
+float m_weight = 0;
 
 struct bme_data_buffer                    m_bme_data_single_buffer = {0};
 struct bme680_field_data                  m_bme_data_single = {0};
 
 float m_force_value = 0;
-float m_force_tare = 0;
 bool m_force_calibrated = false;
 
 float m_cable_displacement = 0;
@@ -101,6 +102,7 @@ volatile bool m_measure_accl = false;
 volatile bool m_measure_hardness = false;
 volatile bool m_measure_moisture = false;
 volatile bool m_measure_temperature = false;
+volatile bool m_measure_displacement = false;
 
 
 volatile bool m_ble_send_flag = false;
@@ -124,7 +126,6 @@ static nrf_saadc_value_t m_saadc_buffer[2][SAADC_SAMPLES_IN_BUFFER];
 
 snow_slave_measurement_series_t m_test_series = {0};
 
-
 void saadc_callback_handler(nrf_drv_saadc_evt_t const * p_event) {
     
 }
@@ -138,8 +139,15 @@ void snow_hx711_event_handler(hx711_evt_t evt, int value) {
     static int tare;
     static int cnt;
     static int runs;
+    static bool run_calib;
 
     if (evt == DATA_ERROR) {
+        if (run_calib) {
+            runs = 0;
+            tare = 0;
+            avg = 0;
+            cnt = 0;
+        }
         printf("Error\n");
         return;
     }
@@ -155,14 +163,22 @@ void snow_hx711_event_handler(hx711_evt_t evt, int value) {
             if (n < 3) n = 0;
           
             //printf("%f\n", n * 2.5362f);
-            m_force_value = n * 2.5362f;
+            m_force_value = n * 4.98077802218f;
+            avg = 0;
         } else {
+            if (!run_calib) {
+                tare = 0;
+                run_calib = true;
+            }
             tare += avg;
             runs++;
-            printf("taring...\n");
+            printf("taring %d...\n", runs);
             if (runs == 10) {
                 tare /= runs;
                 m_force_calibrated = true;
+                run_calib = false;
+                runs = 0;
+                avg = 0;
             }
         }
     }
@@ -258,19 +274,21 @@ void snow_slave_single_measurement(uint16_t meas_interval, uint8_t meas_amount) 
 }
 
 void snow_slave_ble_send_device_info() {
-    uint8_t buf[6];
+    uint8_t buf[8];
     buf[0] = 'i';
     buf[1] = SNOW_SLAVE_VERSION;
     buf[2] = SNOW_SLAVE_REVISION;
-    buf[3] = ';';
-    buf[4] = '\r';
-    buf[5] = '\n';
+    buf[3] = 0xFF;
+    buf[4] = 0xFE;
+    buf[5] = 0xFF;
+    buf[6] = '\r';
+    buf[7] = '\n';
 
-    snow_ble_data_send(buf, 6);
+    snow_ble_data_send(buf, 8);
 }
 
 void snow_slave_ble_send_error(uint8_t cmd, uint8_t err_code, uint8_t* err_desc, uint8_t err_desc_len) {
-    uint8_t* buf = (uint8_t*)malloc(4 + err_desc_len);
+    uint8_t* buf = (uint8_t*)malloc(7 + err_desc_len);
 
     buf[0] = cmd;
     buf[1] = err_code;
@@ -281,10 +299,13 @@ void snow_slave_ble_send_error(uint8_t cmd, uint8_t err_code, uint8_t* err_desc,
         offset = 1;
     }
     
-    buf[err_desc_len + 2 + offset] = '\r';
-    buf[err_desc_len + 3 + offset] = '\n';
+    buf[err_desc_len + 2 + offset] = 0xFF;
+    buf[err_desc_len + 3 + offset] = 0xFE;
+    buf[err_desc_len + 4 + offset] = 0xFF;
+    buf[err_desc_len + 5 + offset] = '\r';
+    buf[err_desc_len + 6 + offset] = '\n';
 
-    snow_ble_data_send(buf, 4 + err_desc_len);
+    snow_ble_data_send(buf, 7 + err_desc_len);
     free(buf);
 }
 
@@ -442,11 +463,10 @@ ret_code_t sensors_init() {
 
 
 void test_ble() {
-    
+    ret_code_t err_code = app_timer_init();
 
     saadc_init();
     snow_wps250_init(NRF_SAADC_INPUT_AIN4);
-    float displacement;
 
     app_timer_create(&m_accl_timer_id, APP_TIMER_MODE_REPEATED, timer_accl_timer_timeout_handler);
     app_timer_create(&m_bme_timer_id, APP_TIMER_MODE_REPEATED, timer_bme_timer_timeout_handler);
@@ -458,11 +478,14 @@ void test_ble() {
     
     snow_gps_read_data();
 
-    ret_code_t err_code = app_timer_init();
-    err_code = snow_ble_init();  
+    
+    
 
     hx711_init(INPUT_CH_A_128, snow_hx711_event_handler);
     hx711_start(false);
+    snow_hx711_calibrate();
+
+    err_code = snow_ble_init();  
 
     // Main program loop
     for (;;) {
@@ -527,6 +550,10 @@ void test_ble() {
 
             m_measure_moisture = false;
         }
+
+        
+        snow_wps250_displacement(&m_displacement);
+        m_weight = m_force_value;
 
 
         //
@@ -667,12 +694,14 @@ void test_ble() {
                         m_gps_pos.valid = false;
 
 
-                        m_ble_tx_buf[26] = ';';
-                        m_ble_tx_buf[27] = '\r';
-                        m_ble_tx_buf[28] = '\n';
+                        m_ble_tx_buf[26] = 0xFF;
+                        m_ble_tx_buf[27] = 0xFE;
+                        m_ble_tx_buf[28] = 0xFF;
+                        m_ble_tx_buf[29] = '\r';
+                        m_ble_tx_buf[30] = '\n';
 
                         if (ble_send_ready()) {
-                            snow_ble_data_send(m_ble_tx_buf, 29);
+                            snow_ble_data_send(m_ble_tx_buf, 31);
                         }
                     } break;
                 }
@@ -712,10 +741,24 @@ void test_ble() {
                         m_ble_tx_buf[15] = (uint8_t)(m_accl.z);
                         m_ble_tx_buf[16] = (uint8_t)((m_accl.z >> 8));
 
-                        m_ble_tx_buf[17] = ';';
+                        uint32_t displacement = *(uint32_t*)(&m_displacement);
+                        m_ble_tx_buf[17] = displacement;
+                        m_ble_tx_buf[18] = displacement >> 8;
+                        m_ble_tx_buf[19] = displacement >> 16;
+                        m_ble_tx_buf[20] = displacement >> 24;
 
-                        m_ble_tx_buf[18] = '\r';
-                        m_ble_tx_buf[19] = '\n';
+                        uint32_t weight = *(uint32_t*)(&m_weight);
+                        m_ble_tx_buf[21] = weight;
+                        m_ble_tx_buf[22] = weight >> 8;
+                        m_ble_tx_buf[23] = weight >> 16;
+                        m_ble_tx_buf[24] = weight >> 24;
+
+                        m_ble_tx_buf[25] = 0xFF;
+                        m_ble_tx_buf[26] = 0xFE;
+                        m_ble_tx_buf[27] = 0xFF;
+
+                        m_ble_tx_buf[28] = '\r';
+                        m_ble_tx_buf[29] = '\n';
 
                         m_contmeas_state = SNOW_SLAVE_CONTMEAS_SEND;
                     } break;
@@ -723,7 +766,8 @@ void test_ble() {
                     case SNOW_SLAVE_CONTMEAS_SEND: {
                         // Send the data to device
                         if (ble_send_ready()) {                                                      
-                            err_code = snow_ble_data_send(m_ble_tx_buf, 20);                                             
+                            err_code = snow_ble_data_send(m_ble_tx_buf, 30);    
+                            printf("Weight: %f | Displacement: %f\n", m_weight, m_displacement);                                       
                         }
 
                         if (err_code == NRF_SUCCESS)

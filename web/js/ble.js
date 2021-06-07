@@ -278,7 +278,7 @@ function handle_notifications(ev) {
         var idx = i + m_data_offset;
         m_data_buf.setUint8(idx, value.getUint8(i));      
 
-        if (i > 2) {
+        if (idx > 2) {
             if (m_data_buf.getUint8(idx-1) == 0x0D && m_data_buf.getUint8(idx) == 0x0A) {
                 parse_data_packages(m_data_buf);
 
@@ -322,8 +322,8 @@ function parse_data_packages(data) {
     var offset = 0;
     var len = 0;
     for (let i = 0; i < data.byteLength; i++) {
-        if (data.getUint8(i) == atoh(';')) {
-            len = i - offset - 1;
+        if (data.getUint8(i) == 0xFF && data.getUint8(i-1) == 0xFE && data.getUint8(i-2) == 0xFF) {
+            len = i - offset - 3;
             on_data_package_received(new DataView(data.buffer, offset), len);
             offset = i + 1;
         }
@@ -338,6 +338,13 @@ function on_data_package_received(data, len) {
         var temp = data.getInt16(1, 3, true);
         var pres = data.getUint32(3, 7, true);
         var humi = data.getUint32(7, 11, true);
+        
+        
+        var dv = new DataView(data.buffer);
+        var displacement = dv.getFloat32(17, 21, true);
+        var weight = dv.getFloat32(21, 25, true);
+
+        console.log(weight);
 
         var temperature = temp / 100.0;
         var pressure = pres / 100.0;
@@ -351,6 +358,9 @@ function on_data_package_received(data, len) {
         chart_add_data(m_chart_air_temperature, label, temperature);
         chart_add_data(m_chart_air_pressure, label, pressure);
         chart_add_data(m_chart_air_humidity, label, humidity);
+        document.getElementById("ui-prog-displacement").value = displacement;
+        document.getElementById("txt-force-sensor-value").innerText = weight + " gramm";
+
     } else if (cmd == atoh('m')) {
         var air_temp = data.getInt16(1, 3, true) / 100.0;
         var air_pres = data.getUint32(3, 7, true) / 100.0;
@@ -402,9 +412,25 @@ function u8toi(arr) {
 }
 
 
+function ble_command_builder(cmds) {
+    var cmd_str = "";
+    if (Array.isArray(cmds)) {
+        cmds.forEach(cmd => {
+            cmd_str += cmd + String.fromCharCode(0xFF) + String.fromCharCode(0xFE) + String.fromCharCode(0xFF);
+        });
+    } else {
+        cmd_str += cmds + String.fromCharCode(0xFF) + String.fromCharCode(0xFE) + String.fromCharCode(0xFF);
+    }
+
+    cmd_str += "\r\n";
+    return cmd_str;
+}
+
+
 function toggle_continuous() {
     if (m_connected) {
-        nus_send_str("c!!1;\r\n");
+        //nus_send_str("c!!1;\r\n");
+        nus_send_str(ble_command_builder("c!!1"));
         m_continuous = !m_continuous;
     }
 

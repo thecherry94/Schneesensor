@@ -140,7 +140,7 @@ void hx711_init(hx711_mode_t mode, hx711_event_handler_t evt_handler)
   ret_code = nrf_drv_gpiote_in_init(DOUT, &gpiote_config, gpiote_evt_handler);
   APP_ERROR_CHECK(ret_code);
 
-  /* Set up timers, gpiote, and ppi for clock signal generation*/
+  
   NRF_TIMER1->CC[0]     = 1;
   NRF_TIMER1->CC[1]     = TIMER_COMPARE;
   NRF_TIMER1->CC[2]     = TIMER_COUNTERTOP;
